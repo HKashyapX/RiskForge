@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 set -e
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+if [ -f "$REPO_ROOT/.venv/bin/python3" ]; then
+    PY="$REPO_ROOT/.venv/bin/python3"
+    PYTEST="$REPO_ROOT/.venv/bin/pytest"
+else
+    PY="$(which python3)"
+    PYTEST="$(which pytest)"
+fi
+
 echo "[GIT HOOK] Verifying boundary import matrices..."
-python3 scripts/lint_boundaries.py
+"$PY" "$REPO_ROOT/scripts/lint_boundaries.py"
 
 echo "[GIT HOOK] Running contract validation tests..."
-PYTHONPATH=src pytest -q tests/unit/test_contracts.py tests/unit/test_pipeline_contracts_mock.py
+PYTHONPATH="$REPO_ROOT/src" "$PYTEST" -q "$REPO_ROOT/tests/unit/test_contracts.py" "$REPO_ROOT/tests/unit/test_pipeline_contracts_mock.py"
 
 echo "[GIT HOOK] All governance checks passed."
