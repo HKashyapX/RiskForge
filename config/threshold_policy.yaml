@@ -1,0 +1,16 @@
+decision_boundaries:
+  auto_dismiss_max: 0.40
+  hitl_review_min: 0.40
+  hitl_review_max: 0.65
+  critical_escalation_min: 0.65
+
+critical_energy_thresholds:
+  pressure_psi: 150.0
+  working_height_meters: 1.8
+  h2s_ppm: 10.0
+
+runtime:
+  max_latency_ms: 35.0
+  intra_op_threads: 4
+  execution_provider: "CPUExecutionProvider"
+  quantization_type: "INT8"

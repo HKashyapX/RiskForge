@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "riskforge"
+version = "0.1.0"
+description = "Deterministic AI/NLP-Powered SIF Precursor Detection System for Oil India Limited"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "RiskForge Systems Engineering Team" }
+]
+dependencies = [
+    "torch>=2.2.0",
+    "transformers>=4.40.0",
+    "pydantic>=2.7.0",
+    "onnx>=1.16.0",
+    "onnxruntime>=1.17.0",
+    "numpy>=1.26.0",
+    "pandas>=2.2.0",
+    "pyyaml>=6.0.1",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.1.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.9.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+disallow_untyped_defs = true

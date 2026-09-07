@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -e
+
+echo "[GIT HOOK] Verifying boundary import matrices..."
+python3 scripts/lint_boundaries.py
+
+echo "[GIT HOOK] Running contract validation tests..."
+PYTHONPATH=src pytest -q tests/unit/test_contracts.py tests/unit/test_pipeline_contracts_mock.py
+
+echo "[GIT HOOK] All governance checks passed."
