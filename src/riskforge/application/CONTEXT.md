@@ -1,12 +1,13 @@
 # Subsystem: Application Orchestration
 
 ## Boundary
-- Authority: Coordinate normalized incidents, inference, application-facing metrics access, and error translation.
+- Authority: Coordinate normalized incidents, inference, application-facing metrics, incident
+  browsing, review commands, audit history, and error translation.
 - Forbidden: Direct storage, HTTP transport, model training, normalization mutation, or metrics implementation details.
 
 ## Inputs / Outputs
 - Consumes: `IncidentNormalizedRecord`.
-- Produces: `ModelInferenceResult` and application-facing metrics values through injected protocols.
+- Produces: inference results and application-owned workflow views through injected protocols.
 
 ## Invariants
 - Preserve `log_id` correlation exactly.
