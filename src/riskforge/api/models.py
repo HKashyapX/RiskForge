@@ -7,6 +7,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from riskforge.application.workflow_models import (
+    AuditEventView,
+    IncidentView,
+    Page,
+    ReviewDecisionView,
+)
 from riskforge.core.contracts import (
     AssetRiskSummary,
     IncidentNormalizedRecord,
@@ -57,6 +63,30 @@ class AssetSummaryResponse(ApiModel):
     api_version: Literal["v1"] = API_VERSION
     correlation_id: CorrelationId
     summary: AssetRiskSummary
+
+
+class IncidentResponse(ApiModel):
+    api_version: Literal["v1"] = API_VERSION
+    correlation_id: CorrelationId
+    incident: IncidentView
+
+
+class IncidentPageResponse(ApiModel):
+    api_version: Literal["v1"] = API_VERSION
+    correlation_id: CorrelationId
+    page: Page[IncidentView]
+
+
+class AuditPageResponse(ApiModel):
+    api_version: Literal["v1"] = API_VERSION
+    correlation_id: CorrelationId
+    page: Page[AuditEventView]
+
+
+class ReviewDecisionResponse(ApiModel):
+    api_version: Literal["v1"] = API_VERSION
+    correlation_id: CorrelationId
+    decision: ReviewDecisionView
 
 
 class ErrorDetail(ApiModel):
