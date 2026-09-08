@@ -1,20 +1,51 @@
-#!/usr/bin/env bash
-set -e
+#!/usr/bin/env python
+"""Run RiskForge governance checks with the active Python interpreter."""
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+from __future__ import annotations
 
-if [ -f "$REPO_ROOT/.venv/bin/python3" ]; then
-    PY="$REPO_ROOT/.venv/bin/python3"
-    PYTEST="$REPO_ROOT/.venv/bin/pytest"
-else
-    PY="$(which python3)"
-    PYTEST="$(which pytest)"
-fi
+import os
+import subprocess
+import sys
+from pathlib import Path
 
-echo "[GIT HOOK] Verifying boundary import matrices..."
-"$PY" "$REPO_ROOT/scripts/lint_boundaries.py"
 
-echo "[GIT HOOK] Running contract validation tests..."
-PYTHONPATH="$REPO_ROOT/src" "$PYTEST" -q "$REPO_ROOT/tests/unit/test_contracts.py" "$REPO_ROOT/tests/unit/test_pipeline_contracts_mock.py"
+def run(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
+    subprocess.run(command, cwd=cwd, env=env, check=True)
 
-echo "[GIT HOOK] All governance checks passed."
+
+def main() -> None:
+    root = Path(
+        subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            text=True,
+        ).strip()
+    )
+    env = os.environ.copy()
+    src_path = str(root / "src")
+    existing = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        os.pathsep.join((src_path, existing)) if existing else src_path
+    )
+
+    print("[GIT HOOK] Verifying boundary import matrices...")
+    run([sys.executable, str(root / "scripts" / "lint_boundaries.py")], cwd=root, env=env)
+
+    print("[GIT HOOK] Running contract validation tests...")
+    run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "tests/unit/test_contracts.py",
+            "tests/unit/test_pipeline_contracts_mock.py",
+        ],
+        cwd=root,
+        env=env,
+    )
+
+    print("[GIT HOOK] All governance checks passed.")
+
+
+if __name__ == "__main__":
+    main()
