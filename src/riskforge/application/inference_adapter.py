@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
 
 import numpy as np
 
@@ -39,21 +40,20 @@ class EncodedIncident:
         object.__setattr__(self, "token_type_ids", token_types)
 
 
-class IncidentInputEncoder:
-    """Protocol-like base for tokenization/encoding implementations.
-
-    Concrete tokenizer dependencies belong outside the application package.
-    """
+@runtime_checkable
+class IncidentInputEncoder(Protocol):
+    """Application-facing tokenization/encoding dependency."""
 
     def encode(self, record: IncidentNormalizedRecord) -> EncodedIncident:
-        raise NotImplementedError
+        """Encode one normalized incident."""
 
     def encode_batch(self, records: Sequence[IncidentNormalizedRecord]) -> EncodedIncident:
-        raise NotImplementedError
+        """Encode a batch with one tensor row per input record, preserving order."""
 
 
-class ServingInferenceEngine:
-    """Structural protocol for tensor-based inference engines."""
+@runtime_checkable
+class ServingInferenceEngine(Protocol):
+    """Application-facing protocol for tensor-based serving engines."""
 
     def infer(
         self,
@@ -62,7 +62,7 @@ class ServingInferenceEngine:
         attention_mask: np.ndarray,
         token_type_ids: np.ndarray | None = None,
     ) -> ModelInferenceResult:
-        raise NotImplementedError
+        """Run one normalized incident through a tensor-based engine."""
 
     def infer_batch(
         self,
@@ -71,17 +71,13 @@ class ServingInferenceEngine:
         attention_mask: np.ndarray,
         token_type_ids: np.ndarray | None = None,
     ) -> Sequence[ModelInferenceResult]:
-        raise NotImplementedError
+        """Run a batch through a tensor-based engine."""
 
 
 class ServingInferenceAdapter:
     """Adapt tensor-based serving to the application inference protocol."""
 
-    def __init__(
-        self,
-        engine: ServingInferenceEngine,
-        encoder: IncidentInputEncoder,
-    ) -> None:
+    def __init__(self, engine: ServingInferenceEngine, encoder: IncidentInputEncoder) -> None:
         self._engine = engine
         self._encoder = encoder
 
@@ -94,9 +90,9 @@ class ServingInferenceAdapter:
                 encoded.attention_mask,
                 encoded.token_type_ids,
             )
+        except (ResultCorrelationError, ValueError):
+            raise
         except Exception as error:
-            if isinstance(error, (ResultCorrelationError, ValueError)):
-                raise
             raise InferenceApplicationError("serving inference failed") from error
         if result.log_id != record.log_id:
             raise ResultCorrelationError("serving result log_id does not match request")
@@ -118,9 +114,9 @@ class ServingInferenceAdapter:
                     encoded.token_type_ids,
                 )
             )
+        except (ResultCorrelationError, ValueError):
+            raise
         except Exception as error:
-            if isinstance(error, (ResultCorrelationError, ValueError)):
-                raise
             raise InferenceApplicationError("serving batch inference failed") from error
         if len(results) != len(record_list):
             raise ResultCorrelationError("serving result count does not match request count")
