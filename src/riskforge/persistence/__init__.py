@@ -8,6 +8,7 @@ from riskforge.persistence.models import (
     PageRequest,
     ReviewAction,
     ReviewDecision,
+    StoredIncidentResult,
 )
 from riskforge.persistence.protocols import (
     AuditEventRepository,
@@ -26,4 +27,5 @@ __all__ = [
     "ReviewAction",
     "ReviewDecision",
     "ReviewDecisionRepository",
+    "StoredIncidentResult",
 ]

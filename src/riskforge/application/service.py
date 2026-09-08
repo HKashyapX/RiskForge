@@ -11,7 +11,11 @@ from riskforge.application.exceptions import (
     ResultCorrelationError,
 )
 from riskforge.application.protocols import InferenceEngine, MetricsService
-from riskforge.core.contracts import AssetRiskSummary, IncidentNormalizedRecord, ModelInferenceResult
+from riskforge.core.contracts import (
+    AssetRiskSummary,
+    IncidentNormalizedRecord,
+    ModelInferenceResult,
+)
 
 
 class ApplicationService:

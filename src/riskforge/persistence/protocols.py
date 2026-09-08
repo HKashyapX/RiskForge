@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
-from riskforge.core.contracts import ModelInferenceResult
 from riskforge.persistence.models import (
     AuditEvent,
     IncidentResultFilter,
     Page,
     PageRequest,
     ReviewDecision,
+    StoredIncidentResult,
 )
 
 
@@ -19,22 +19,22 @@ from riskforge.persistence.models import (
 class IncidentResultRepository(Protocol):
     """Durable repository for immutable automated inference results."""
 
-    def create_idempotent(self, result: ModelInferenceResult) -> ModelInferenceResult:
-        """Atomically create a result or return the identical existing result for `log_id`.
+    def create_idempotent(self, record: StoredIncidentResult) -> StoredIncidentResult:
+        """Atomically create a result or return the identical existing record for `log_id`.
 
         Implementations must raise `PersistenceConflictError` when the same `log_id`
         already exists with different content.
         """
 
-    def get(self, log_id: str) -> ModelInferenceResult | None:
-        """Return the immutable automated result for a log ID, if present."""
+    def get(self, log_id: str) -> StoredIncidentResult | None:
+        """Return the immutable incident context and automated result, if present."""
 
     def list(
         self,
         filters: IncidentResultFilter | None = None,
         *,
         page: PageRequest | None = None,
-    ) -> Page[ModelInferenceResult]:
+    ) -> Page[StoredIncidentResult]:
         """Return results ordered by `(timestamp ASC, log_id ASC)` deterministically."""
 
 
