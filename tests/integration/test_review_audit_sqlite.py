@@ -115,7 +115,7 @@ def test_atomic_review_writer_rolls_back_both_records_on_conflict(tmp_path) -> N
     with pytest.raises(PersistenceConflictError):
         writer.append_review_atomically(
             _decision("D2", ReviewAction.DISMISS, "Dismissed."),
-            _event(),
+            _event(reason="Dismissed."),
         )
 
     decisions = SQLiteReviewDecisionRepository(db_path).list_for_incident("LOG_1")
