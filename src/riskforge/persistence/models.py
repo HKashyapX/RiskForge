@@ -55,7 +55,7 @@ class IncidentResultFilter(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    asset_id: str | None = None
+    asset_id: str | None = Field(default=None, min_length=1)
     asset_type: AssetType | None = None
     routing: RoutingBucket | None = None
     min_calibrated_sif_p_score: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -70,7 +70,11 @@ class IncidentResultFilter(BaseModel):
             and self.min_calibrated_sif_p_score > self.max_calibrated_sif_p_score
         ):
             raise ValueError("minimum calibrated SIF-P score cannot exceed maximum")
-        if self.timestamp_from is not None and self.timestamp_to is not None and self.timestamp_from > self.timestamp_to:
+        if (
+            self.timestamp_from is not None
+            and self.timestamp_to is not None
+            and self.timestamp_from > self.timestamp_to
+        ):
             raise ValueError("timestamp_from cannot be later than timestamp_to")
 
 
@@ -98,12 +102,3 @@ class AuditEvent(BaseModel):
     actor_id: str = Field(min_length=1)
     occurred_at: datetime
     reason: str | None = None
-    metadata: dict[str, str] = Field(default_factory=dict)
-
-
-class StoredIncidentResult(BaseModel):
-    """Explicit stored form used to signal immutable automated output."""
-
-    model_config = ConfigDict(frozen=True)
-
-    result: ModelInferenceResult
