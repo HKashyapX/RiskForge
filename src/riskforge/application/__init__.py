@@ -6,7 +6,7 @@ from riskforge.application.inference_adapter import (
     ServingInferenceAdapter,
     ServingInferenceEngine,
 )
-from riskforge.application.protocols import InferenceEngine, MetricsService
+from riskforge.application.protocols import InferenceEngine, MetricsService, RiskForgeApplication
 from riskforge.application.service import ApplicationService
 
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     "IncidentInputEncoder",
     "InferenceEngine",
     "MetricsService",
+    "RiskForgeApplication",
     "ServingInferenceAdapter",
     "ServingInferenceEngine",
 ]

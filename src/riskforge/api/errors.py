@@ -14,6 +14,7 @@ from riskforge.application.exceptions import (
 
 
 class ErrorCode(str, Enum):
+    INVALID_REQUEST = "invalid_request"
     DUPLICATE_LOG_ID = "duplicate_log_id"
     INFERENCE_UNAVAILABLE = "inference_unavailable"
     INVALID_INFERENCE_RESULT = "invalid_inference_result"
