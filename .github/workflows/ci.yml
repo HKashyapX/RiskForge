@@ -42,6 +42,7 @@ jobs:
           src/riskforge/serving
           tests/unit/test_serving.py
           tests/unit/test_serving_artifact.py
+          tests/unit/test_serving_failures.py
           tests/unit/test_supervision.py
           tests/unit/test_supervision_robustness.py
           tests/unit/test_supervision_pipeline.py
