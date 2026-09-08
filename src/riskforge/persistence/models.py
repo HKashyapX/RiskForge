@@ -68,7 +68,7 @@ class IncidentResultFilter(BaseModel):
     timestamp_from: datetime | None = None
     timestamp_to: datetime | None = None
 
-    def model_post_init(self, __context: object) -> None:
+    def model_post_init(self, __context: object, /) -> None:
         if (
             self.min_calibrated_sif_p_score is not None
             and self.max_calibrated_sif_p_score is not None
