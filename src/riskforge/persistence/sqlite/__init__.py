@@ -5,9 +5,11 @@ from riskforge.persistence.sqlite.repository import (
     SQLiteIncidentResultRepository,
     SQLiteReviewDecisionRepository,
 )
+from riskforge.persistence.sqlite.review_audit import SQLiteReviewAuditWriter
 
 __all__ = [
     "SQLiteAuditEventRepository",
     "SQLiteIncidentResultRepository",
+    "SQLiteReviewAuditWriter",
     "SQLiteReviewDecisionRepository",
 ]
