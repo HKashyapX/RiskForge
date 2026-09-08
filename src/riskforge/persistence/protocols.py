@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from riskforge.core.contracts import ModelInferenceResult
 from riskforge.persistence.models import (
@@ -15,6 +15,7 @@ from riskforge.persistence.models import (
 )
 
 
+@runtime_checkable
 class IncidentResultRepository(Protocol):
     """Durable repository for immutable automated inference results."""
 
@@ -37,6 +38,7 @@ class IncidentResultRepository(Protocol):
         """Return results ordered by `(timestamp ASC, log_id ASC)` deterministically."""
 
 
+@runtime_checkable
 class ReviewDecisionRepository(Protocol):
     """Repository for append-only human review decisions."""
 
@@ -52,6 +54,7 @@ class ReviewDecisionRepository(Protocol):
         """Return decisions for one incident in `(decided_at ASC, decision_id ASC)` order."""
 
 
+@runtime_checkable
 class AuditEventRepository(Protocol):
     """Append-only audit event repository."""
 
