@@ -15,9 +15,16 @@ concurrency:
 
 jobs:
   test:
-    name: Python 3.11 tests and boundaries
-    runs-on: ubuntu-latest
+    name: Python 3.11 tests and boundaries (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-15-intel
 
     steps:
       - name: Check out repository
