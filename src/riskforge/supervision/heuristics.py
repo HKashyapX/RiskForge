@@ -1,10 +1,16 @@
 import re
-from typing import List, Set
+
 from riskforge.core.contracts import IncidentNormalizedRecord
-from riskforge.supervision.engine import ABSTAIN, NON_SIF, SIF_P, labeling_function
+from riskforge.supervision.engine import (
+    ABSTAIN,
+    NON_SIF,
+    SIF_P,
+    LabelingFunction,
+    labeling_function,
+)
 
 NEGATION_WINDOW = 6
-NEGATION_SET: Set[str] = {
+NEGATION_SET: set[str] = {
     "no", "not", "zero", "none", "neither", "never", "without",
     "intact", "passed", "normal", "tested", "secure", "prevented"
 }
@@ -111,7 +117,7 @@ def lf_low_energy_noise(record: IncidentNormalizedRecord) -> int:
         return NON_SIF
     return ABSTAIN
 
-DEFAULT_LFS: List[labeling_function] = [
+DEFAULT_LFS: list[LabelingFunction] = [
     lf_well_control_breach,
     lf_height_fall_hazard,
     lf_dropped_object_exposure,

@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import numpy as np
 import pytest
 
-from riskforge.core.contracts import AssetType, IncidentNormalizedRecord, IncidentRawRecord
+from riskforge.core.contracts import AssetType, IncidentRawRecord
 from riskforge.normalization.gazetteer import SpanPreservingGazetteer
 from riskforge.supervision.engine import (
     ABSTAIN,
@@ -12,7 +13,12 @@ from riskforge.supervision.engine import (
     LFAnalysis,
     LFApplier,
 )
-from riskforge.supervision.heuristics import DEFAULT_LFS, lf_low_energy_noise, lf_well_control_breach
+from riskforge.supervision.heuristics import (
+    DEFAULT_LFS,
+    lf_low_energy_noise,
+    lf_well_control_breach,
+)
+
 
 @pytest.fixture
 def normalizer():
@@ -21,7 +27,7 @@ def normalizer():
 def test_lf_well_control_breach_detection(normalizer):
     raw = IncidentRawRecord(
         log_id="S_01",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="RIG_01",
         asset_type=AssetType.DRILLING_RIG,
         raw_narrative="Observed 3000 psi surge. BOP seal leak while driller operating floor."
@@ -32,7 +38,7 @@ def test_lf_well_control_breach_detection(normalizer):
 def test_lf_well_control_breach_negation_scope(normalizer):
     raw = IncidentRawRecord(
         log_id="S_02",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="RIG_01",
         asset_type=AssetType.DRILLING_RIG,
         raw_narrative="Pressure test 5000 psi on BOP. Zero leak observed while driller operating floor."
@@ -43,7 +49,7 @@ def test_lf_well_control_breach_negation_scope(normalizer):
 def test_lf_low_energy_noise_detection(normalizer):
     raw = IncidentRawRecord(
         log_id="S_03",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="GGS_01",
         asset_type=AssetType.GAS_GATHERING_STATION,
         raw_narrative="Housekeeping carried out in mess room, cleaned small water puddle."
@@ -76,14 +82,14 @@ def test_dawid_skene_em_convergence():
 def test_lf_analysis_summary(normalizer):
     raw1 = IncidentRawRecord(
         log_id="S_04",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="RIG_01",
         asset_type=AssetType.DRILLING_RIG,
         raw_narrative="3000 psi kick. BOP leak with driller on floor."
     )
     raw2 = IncidentRawRecord(
         log_id="S_05",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="RIG_01",
         asset_type=AssetType.DRILLING_RIG,
         raw_narrative="Housekeeping in office yard."
@@ -96,7 +102,7 @@ def test_lf_analysis_summary(normalizer):
     summary = analysis.summary()
 
     assert len(summary) == len(DEFAULT_LFS)
-    for lf_name, stats in summary.items():
+    for stats in summary.values():
         assert "coverage" in stats
         assert "overlaps" in stats
         assert "conflicts" in stats
