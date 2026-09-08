@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Callable, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
@@ -69,6 +69,12 @@ def _canonical_json(model: object) -> str:
     except AttributeError as error:
         raise TypeError("persistence payload must be a Pydantic model") from error
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def _iso_timestamp(value: datetime) -> str:
+    if value.tzinfo is not None and value.utcoffset() is not None:
+        return value.astimezone(UTC).isoformat()
+    return value.isoformat()
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -148,7 +154,7 @@ class SQLiteIncidentResultRepository(_SQLiteRepositoryBase):
                 """,
                 (
                     record.log_id,
-                    record.timestamp.isoformat(),
+                    _iso_timestamp(record.timestamp),
                     record.asset_id,
                     record.asset_type.value,
                     record.result.routing.value,
@@ -213,10 +219,10 @@ class SQLiteIncidentResultRepository(_SQLiteRepositoryBase):
             parameters.append(active_filter.max_calibrated_sif_p_score)
         if active_filter.timestamp_from is not None:
             clauses.append("timestamp >= ?")
-            parameters.append(active_filter.timestamp_from.isoformat())
+            parameters.append(_iso_timestamp(active_filter.timestamp_from))
         if active_filter.timestamp_to is not None:
             clauses.append("timestamp <= ?")
-            parameters.append(active_filter.timestamp_to.isoformat())
+            parameters.append(_iso_timestamp(active_filter.timestamp_to))
         where = " WHERE " + " AND ".join(clauses) if clauses else ""
         connection = self._connect()
         try:
@@ -270,7 +276,7 @@ class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
                     decision.log_id,
                     decision.action.value,
                     decision.reviewer_id,
-                    decision.decided_at.isoformat(),
+                    _iso_timestamp(decision.decided_at),
                     decision.reason,
                 ),
             )
@@ -292,58 +298,42 @@ class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
         page: PageRequest | None = None,
     ) -> Page[ReviewDecision]:
         _validate_identifier(log_id, "log_id")
-        return self._list_history(
-            table="review_decisions",
-            timestamp_column="decided_at",
-            tie_column="decision_id",
-            log_id=log_id,
-            page=page,
-            factory=lambda row: ReviewDecision(
-                decision_id=row["decision_id"],
-                log_id=row["log_id"],
-                action=row["action"],
-                reviewer_id=row["reviewer_id"],
-                decided_at=_parse_datetime(row["decided_at"]),
-                reason=row["reason"],
-            ),
-        )
-
-    def _list_history(
-        self,
-        *,
-        table: str,
-        timestamp_column: str,
-        tie_column: str,
-        log_id: str,
-        page: PageRequest | None,
-        factory: Callable[[sqlite3.Row], object],
-    ) -> Page:
         request = page or PageRequest()
         connection = self._connect()
         try:
             total = int(
                 connection.execute(
-                    f"SELECT COUNT(*) FROM {table} WHERE log_id = ?",
+                    "SELECT COUNT(*) FROM review_decisions WHERE log_id = ?",
                     (log_id,),
                 ).fetchone()[0]
             )
             rows = connection.execute(
-                f"""
-                SELECT * FROM {table}
+                """
+                SELECT * FROM review_decisions
                 WHERE log_id = ?
-                ORDER BY {timestamp_column} ASC, {tie_column} ASC
+                ORDER BY decided_at ASC, decision_id ASC
                 LIMIT ? OFFSET ?
                 """,
                 (log_id, request.limit, request.offset),
             ).fetchall()
             return Page(
-                items=tuple(factory(row) for row in rows),
+                items=tuple(
+                    ReviewDecision(
+                        decision_id=row["decision_id"],
+                        log_id=row["log_id"],
+                        action=row["action"],
+                        reviewer_id=row["reviewer_id"],
+                        decided_at=_parse_datetime(row["decided_at"]),
+                        reason=row["reason"],
+                    )
+                    for row in rows
+                ),
                 offset=request.offset,
                 limit=request.limit,
                 total=total,
             )
         except sqlite3.Error as error:
-            raise PersistenceError("cannot query persistence history") from error
+            raise PersistenceError("cannot query review history") from error
         finally:
             connection.close()
 
@@ -368,7 +358,7 @@ class SQLiteAuditEventRepository(_SQLiteRepositoryBase):
                     event.log_id,
                     event.event_type.value,
                     event.actor_id,
-                    event.occurred_at.isoformat(),
+                    _iso_timestamp(event.occurred_at),
                     event.reason,
                 ),
             )
@@ -406,7 +396,7 @@ class SQLiteAuditEventRepository(_SQLiteRepositoryBase):
                         event.log_id,
                         event.event_type.value,
                         event.actor_id,
-                        event.occurred_at.isoformat(),
+                        _iso_timestamp(event.occurred_at),
                         event.reason,
                     ),
                 )
