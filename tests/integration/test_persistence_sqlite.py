@@ -19,6 +19,11 @@ from riskforge.persistence.models import (
     ReviewDecision,
     StoredIncidentResult,
 )
+from riskforge.persistence.protocols import (
+    AuditEventRepository,
+    IncidentResultRepository,
+    ReviewDecisionRepository,
+)
 from riskforge.persistence.sqlite.repository import (
     SQLiteAuditEventRepository,
     SQLiteIncidentResultRepository,
@@ -88,8 +93,17 @@ def _event(event_id: str, log_id: str = "LOG_1", *, when: datetime = NOW) -> Aud
     )
 
 
+def test_sqlite_repositories_satisfy_protocols(tmp_path) -> None:
+    db_path = tmp_path / "riskforge.db"
+    assert isinstance(SQLiteIncidentResultRepository(db_path), IncidentResultRepository)
+    assert isinstance(SQLiteReviewDecisionRepository(db_path), ReviewDecisionRepository)
+    assert isinstance(SQLiteAuditEventRepository(db_path), AuditEventRepository)
+
+
 def test_sqlite_incident_result_idempotency_and_deterministic_queries(tmp_path) -> None:
-    repo = SQLiteIncidentResultRepository(tmp_path / "riskforge.db")
+    db_path = tmp_path / "riskforge.db"
+    repo = SQLiteIncidentResultRepository(db_path)
+    first = _stored("LOG_1")
     repo.create_idempotent(
         _stored(
             "LOG_2",
@@ -98,8 +112,8 @@ def test_sqlite_incident_result_idempotency_and_deterministic_queries(tmp_path) 
             score=0.9,
         )
     )
-    repo.create_idempotent(_stored("LOG_1", timestamp=NOW, asset_id="RIG_01"))
-    assert repo.get("LOG_1") == _stored("LOG_1")
+    repo.create_idempotent(first)
+    assert repo.get("LOG_1") == first
     assert repo.list().items[0].log_id == "LOG_1"
     filtered = repo.list(
         IncidentResultFilter(asset_id="RIG_02"),
@@ -109,6 +123,9 @@ def test_sqlite_incident_result_idempotency_and_deterministic_queries(tmp_path) 
     assert filtered.items[0].log_id == "LOG_2"
     with pytest.raises(PersistenceConflictError):
         repo.create_idempotent(_stored("LOG_1", score=0.9))
+
+    restarted = SQLiteIncidentResultRepository(db_path)
+    assert restarted.get("LOG_1") == first
 
 
 def test_sqlite_review_history_is_append_only(tmp_path) -> None:
