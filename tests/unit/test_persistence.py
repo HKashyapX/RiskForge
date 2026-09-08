@@ -1,15 +1,15 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from riskforge.core.contracts import (
-    AssetType,
     LifeSavingRule,
     ModelInferenceResult,
     OperationalTriad,
     RoutingBucket,
 )
-from riskforge.persistence.exceptions import PersistenceConflictError, RecordNotFoundError
+from riskforge.persistence.exceptions import PersistenceConflictError
 from riskforge.persistence.models import (
     AuditEvent,
     AuditEventType,
@@ -25,17 +25,20 @@ from riskforge.persistence.protocols import (
     ReviewDecisionRepository,
 )
 
-
 NOW = datetime(2026, 1, 1, 12, tzinfo=UTC)
 
 
-def _result(log_id: str, *, asset_id: str = "RIG_01", score: float = 0.2) -> ModelInferenceResult:
+def _result(log_id: str, *, score: float = 0.2) -> ModelInferenceResult:
     return ModelInferenceResult(
         log_id=log_id,
         raw_sif_p_score=score,
         calibrated_sif_p_score=score,
         deterministic_override=False,
-        routing=RoutingBucket.CRITICAL_ESCALATION if score >= 0.65 else RoutingBucket.AUTO_DISMISS,
+        routing=(
+            RoutingBucket.CRITICAL_ESCALATION
+            if score >= 0.65
+            else RoutingBucket.AUTO_DISMISS
+        ),
         matched_iogp_rules=[LifeSavingRule.LINE_OF_FIRE] if score >= 0.65 else [],
         triad=OperationalTriad(),
         latency_ms=1.0,
@@ -58,16 +61,19 @@ class FakeIncidentResults:
     def get(self, log_id: str) -> ModelInferenceResult | None:
         return self._items.get(log_id)
 
-    def list(self, filters=None, *, page=None):
+    def list(
+        self, filters: IncidentResultFilter | None = None, *, page: PageRequest | None = None
+    ) -> Page[ModelInferenceResult]:
         active_filter = filters or IncidentResultFilter()
         request = page or PageRequest()
         values = [self._items[key] for key in sorted(self._items)]
         values = [
             result
             for result in values
-            if (active_filter.routing is None or result.routing is active_filter.routing)
+            if active_filter.routing is None or result.routing is active_filter.routing
         ]
-        return Page(items=tuple(values[request.offset : request.offset + request.limit]), offset=request.offset, limit=request.limit, total=len(values))
+        items = tuple(values[request.offset : request.offset + request.limit])
+        return Page(items=items, offset=request.offset, limit=request.limit, total=len(values))
 
 
 class FakeReviewDecisions:
@@ -80,13 +86,16 @@ class FakeReviewDecisions:
         self._items[decision.decision_id] = decision
         return decision
 
-    def list_for_incident(self, log_id: str, *, page=None):
+    def list_for_incident(
+        self, log_id: str, *, page: PageRequest | None = None
+    ) -> Page[ReviewDecision]:
         request = page or PageRequest()
         values = sorted(
             (item for item in self._items.values() if item.log_id == log_id),
             key=lambda item: (item.decided_at, item.decision_id),
         )
-        return Page(items=tuple(values[request.offset : request.offset + request.limit]), offset=request.offset, limit=request.limit, total=len(values))
+        items = tuple(values[request.offset : request.offset + request.limit])
+        return Page(items=items, offset=request.offset, limit=request.limit, total=len(values))
 
 
 class FakeAudit:
@@ -99,7 +108,7 @@ class FakeAudit:
         self._items[event.event_id] = event
         return event
 
-    def append_many(self, events):
+    def append_many(self, events) -> tuple[AuditEvent, ...]:
         ids = [event.event_id for event in events]
         if len(ids) != len(set(ids)) or any(event_id in self._items for event_id in ids):
             raise PersistenceConflictError("audit event IDs must be unique")
@@ -107,13 +116,16 @@ class FakeAudit:
             self._items[event.event_id] = event
         return tuple(events)
 
-    def list_for_incident(self, log_id: str, *, page=None):
+    def list_for_incident(
+        self, log_id: str, *, page: PageRequest | None = None
+    ) -> Page[AuditEvent]:
         request = page or PageRequest()
         values = sorted(
             (item for item in self._items.values() if item.log_id == log_id),
             key=lambda item: (item.occurred_at, item.event_id),
         )
-        return Page(items=tuple(values[request.offset : request.offset + request.limit]), offset=request.offset, limit=request.limit, total=len(values))
+        items = tuple(values[request.offset : request.offset + request.limit])
+        return Page(items=items, offset=request.offset, limit=request.limit, total=len(values))
 
 
 def test_repository_protocols_accept_fake_implementations() -> None:
@@ -133,25 +145,31 @@ def test_incident_result_creation_is_idempotent_and_conflict_safe() -> None:
 
 def test_incident_query_has_explicit_filter_and_pagination() -> None:
     repo = FakeIncidentResults()
-    repo.create_idempotent(_result("LOG_1", score=0.2))
+    repo.create_idempotent(_result("LOG_1"))
     repo.create_idempotent(_result("LOG_2", score=0.8))
-    page = repo.list(IncidentResultFilter(routing=RoutingBucket.CRITICAL_ESCALATION), page=PageRequest(limit=1))
+    page = repo.list(
+        IncidentResultFilter(routing=RoutingBucket.CRITICAL_ESCALATION),
+        page=PageRequest(limit=1),
+    )
     assert page.total == 1
     assert [item.log_id for item in page.items] == ["LOG_2"]
 
 
 def test_page_request_rejects_invalid_values() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         PageRequest(offset=-1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         PageRequest(limit=0)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValidationError):
         PageRequest(limit=501)
 
 
 def test_filter_rejects_inverted_ranges() -> None:
     with pytest.raises(ValueError):
-        IncidentResultFilter(min_calibrated_sif_p_score=0.8, max_calibrated_sif_p_score=0.2)
+        IncidentResultFilter(
+            min_calibrated_sif_p_score=0.8,
+            max_calibrated_sif_p_score=0.2,
+        )
     with pytest.raises(ValueError):
         IncidentResultFilter(
             timestamp_from=NOW,
@@ -219,7 +237,7 @@ def test_audit_append_many_preserves_input_order() -> None:
     assert [item.event_id for item in repo.list_for_incident("LOG_1").items] == ["E1", "E2"]
 
 
-def test_review_and_audit_models_are_immutable() -> None:
+def test_review_model_is_immutable() -> None:
     decision = ReviewDecision(
         decision_id="D1",
         log_id="LOG_1",
