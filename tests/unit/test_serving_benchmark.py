@@ -3,8 +3,10 @@ from time import sleep
 import pytest
 
 from riskforge.serving.benchmark import (
+    PeakRssMonitor,
     benchmark_concurrent_requests,
     benchmark_warm_batches,
+    current_rss_bytes,
     latency_summary,
     percentile,
 )
@@ -41,6 +43,7 @@ def test_warm_benchmark_preserves_requested_batch_order() -> None:
     assert [result.batch_size for result in results] == [1, 8, 16, 32]
     assert all(result.iterations == 2 for result in results)
     assert all(result.latency.sample_count == 2 for result in results)
+    assert all(result.peak_rss_bytes >= result.baseline_rss_bytes > 0 for result in results)
     assert engine.batch_sizes == [1, 1, 1, 8, 8, 8, 16, 16, 16, 32, 32, 32]
 
 
@@ -51,6 +54,7 @@ def test_concurrent_benchmark_reports_all_requests() -> None:
     )
     assert report["request_count"] == 8
     assert report["latency"]["sample_count"] == 8
+    assert report["memory"]["peak_rss_bytes"] > 0
     assert sum(engine.batch_sizes) == 8
 
 
@@ -65,3 +69,22 @@ def test_benchmark_rejects_batch_above_engine_limit() -> None:
     engine.max_batch_size = 8
     with pytest.raises(ValueError, match="exceeds"):
         benchmark_warm_batches(engine, batch_sizes=(16,), iterations=1, sequence_length=8)
+
+
+def test_peak_rss_monitor_reports_total_process_memory() -> None:
+    assert current_rss_bytes() > 0
+    with PeakRssMonitor(poll_interval_seconds=0.001) as monitor:
+        allocation = bytearray(1_000_000)
+        assert allocation
+    summary = monitor.summary()
+    assert summary.baseline_rss_bytes > 0
+    assert summary.peak_rss_bytes >= summary.baseline_rss_bytes
+    assert summary.final_rss_bytes > 0
+
+
+def test_peak_rss_monitor_requires_positive_interval_and_completed_context() -> None:
+    with pytest.raises(ValueError, match="positive"):
+        PeakRssMonitor(0.0)
+    monitor = PeakRssMonitor()
+    with pytest.raises(RuntimeError, match="after monitoring"):
+        monitor.summary()
