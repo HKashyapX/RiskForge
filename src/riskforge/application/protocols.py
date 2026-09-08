@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
-from riskforge.core.contracts import AssetRiskSummary, IncidentNormalizedRecord, ModelInferenceResult
+from riskforge.core.contracts import (
+    AssetRiskSummary,
+    IncidentNormalizedRecord,
+    ModelInferenceResult,
+)
 
 
 @runtime_checkable
