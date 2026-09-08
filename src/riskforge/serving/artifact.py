@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from riskforge.core.contracts import LifeSavingRule
+from riskforge.serving.exceptions import ArtifactLoadingError
 
 
-class ArtifactValidationError(ValueError):
+class ArtifactValidationError(ArtifactLoadingError, ValueError):
     """Raised when a model bundle is unsafe or incompatible with serving."""
 
 
@@ -89,9 +90,12 @@ def sha256_file(path: str | Path, chunk_size: int = 1024 * 1024) -> str:
     if chunk_size < 1:
         raise ValueError("chunk_size must be positive")
     digest = hashlib.sha256()
-    with Path(path).open("rb") as artifact:
-        for chunk in iter(lambda: artifact.read(chunk_size), b""):
-            digest.update(chunk)
+    try:
+        with Path(path).open("rb") as artifact:
+            for chunk in iter(lambda: artifact.read(chunk_size), b""):
+                digest.update(chunk)
+    except OSError as error:
+        raise ArtifactLoadingError(f"cannot read ONNX model artifact: {error}") from error
     return digest.hexdigest()
 
 

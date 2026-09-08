@@ -15,6 +15,14 @@ from riskforge.serving.artifact import (
     TemperatureScaler,
     validate_model_checksum,
 )
+from riskforge.serving.exceptions import (
+    ArtifactLoadingError,
+    InferenceFailureError,
+    InputCompatibilityError,
+    InvalidOutputError,
+    ServingError,
+    WarmupError,
+)
 from riskforge.serving.postprocessor import InferencePostprocessor
 
 
@@ -28,18 +36,28 @@ class ONNXInferenceEngine:
         max_batch_size: int = 32,
         warmup: bool = True,
     ) -> ONNXInferenceEngine:
-        manifest = ModelArtifactManifest.load(manifest_path)
-        validate_model_checksum(model_path, manifest.model_sha256)
-        engine = cls(
-            model_path,
-            postprocessor=InferencePostprocessor(
-                calibrator=TemperatureScaler(manifest.temperature)
-            ),
-            max_batch_size=max_batch_size,
-        )
-        manifest.validate_session(engine.input_names, engine.output_names)
+        try:
+            manifest = ModelArtifactManifest.load(manifest_path)
+            validate_model_checksum(model_path, manifest.model_sha256)
+            engine = cls(
+                model_path,
+                postprocessor=InferencePostprocessor(
+                    calibrator=TemperatureScaler(manifest.temperature)
+                ),
+                max_batch_size=max_batch_size,
+            )
+            manifest.validate_session(engine.input_names, engine.output_names)
+        except ServingError:
+            raise
+        except Exception as error:
+            raise ArtifactLoadingError(f"cannot load model artifact: {error}") from error
         if warmup:
-            engine.warmup(manifest.max_sequence_length)
+            try:
+                engine.warmup(manifest.max_sequence_length)
+            except WarmupError:
+                raise
+            except Exception as error:
+                raise WarmupError(f"model warm-up failed: {error}") from error
         return engine
 
     def __init__(
@@ -57,34 +75,43 @@ class ONNXInferenceEngine:
         self.postprocessor = postprocessor or InferencePostprocessor()
         if session is None:
             if not self.model_path.is_file():
-                raise FileNotFoundError(f"ONNX model not found: {self.model_path}")
+                raise ArtifactLoadingError(f"ONNX model not found: {self.model_path}")
             try:
                 import onnxruntime as ort
             except ImportError as error:
-                raise RuntimeError("onnxruntime is required for model serving") from error
+                raise ArtifactLoadingError("onnxruntime is required for model serving") from error
             options = ort.SessionOptions()
             options.intra_op_num_threads = 4
             options.inter_op_num_threads = 1
             options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
             options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-            session = ort.InferenceSession(
-                str(self.model_path),
-                sess_options=options,
-                providers=["CPUExecutionProvider"],
-            )
+            try:
+                session = ort.InferenceSession(
+                    str(self.model_path),
+                    sess_options=options,
+                    providers=["CPUExecutionProvider"],
+                )
+            except Exception as error:
+                raise ArtifactLoadingError(f"cannot create ONNX Runtime session: {error}") from error
         self.session = session
-        self.input_names = tuple(item.name for item in self.session.get_inputs())
-        self.output_names = tuple(item.name for item in self.session.get_outputs())
+        try:
+            self.input_names = tuple(item.name for item in self.session.get_inputs())
+            self.output_names = tuple(item.name for item in self.session.get_outputs())
+        except Exception as error:
+            raise ArtifactLoadingError(f"cannot inspect ONNX model interface: {error}") from error
         if len(self.output_names) < 2:
-            raise ValueError("the ONNX model must expose SIF and IOGP outputs")
+            raise InvalidOutputError("the ONNX model must expose SIF and IOGP outputs")
 
     def warmup(self, sequence_length: int = 8) -> None:
         if sequence_length < 1:
             raise ValueError("sequence_length must be positive")
         sample = np.zeros((1, sequence_length), dtype=np.int64)
         feed = self._input_feed(sample, np.ones_like(sample), None)
-        outputs = self.session.run(None, feed)
-        self._split_outputs(outputs)
+        try:
+            outputs = self.session.run(None, feed)
+            self._split_outputs(outputs)
+        except Exception as error:
+            raise WarmupError(f"model warm-up failed: {error}") from error
 
     def _input_feed(
         self,
@@ -95,10 +122,12 @@ class ONNXInferenceEngine:
         ids = np.asarray(input_ids, dtype=np.int64)
         mask = np.asarray(attention_mask, dtype=np.int64)
         if ids.ndim != 2 or mask.shape != ids.shape:
-            raise ValueError("input_ids and attention_mask must be equally shaped rank-2 arrays")
+            raise InputCompatibilityError(
+                "input_ids and attention_mask must be equally shaped rank-2 arrays"
+            )
         token_types = None if token_type_ids is None else np.asarray(token_type_ids, dtype=np.int64)
         if token_types is not None and token_types.shape != ids.shape:
-            raise ValueError("token_type_ids must match input_ids")
+            raise InputCompatibilityError("token_type_ids must match input_ids")
         feed: dict[str, np.ndarray] = {}
         for name in self.input_names:
             lowered = name.lower()
@@ -110,10 +139,16 @@ class ONNXInferenceEngine:
                 feed[name] = ids
         missing = set(self.input_names) - set(feed)
         if missing:
-            raise ValueError(f"unsupported ONNX inputs: {', '.join(sorted(missing))}")
+            raise InputCompatibilityError(
+                f"unsupported ONNX inputs: {', '.join(sorted(missing))}"
+            )
         return feed
 
     def _split_outputs(self, outputs: Sequence[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+        if len(outputs) != len(self.output_names):
+            raise InvalidOutputError(
+                f"runtime returned {len(outputs)} outputs; expected {len(self.output_names)}"
+            )
         named = dict(zip(self.output_names, outputs, strict=True))
         sif_name = next((name for name in self.output_names if "sif" in name.lower()), None)
         rule_name = next(
@@ -138,15 +173,21 @@ class ONNXInferenceEngine:
         if not records:
             return []
         if len(records) != len(input_ids):
-            raise ValueError("record and tensor batch sizes must match")
+            raise InputCompatibilityError("record and tensor batch sizes must match")
         feed = self._input_feed(input_ids, attention_mask, token_type_ids)
         started = perf_counter()
-        outputs = self.session.run(None, feed)
+        try:
+            outputs = self.session.run(None, feed)
+        except Exception as error:
+            raise InferenceFailureError(f"ONNX Runtime inference failed: {error}") from error
         latency_ms = (perf_counter() - started) * 1000.0
         sif_logits, iogp_logits = self._split_outputs(outputs)
-        return self.postprocessor.process_batch(
-            records, sif_logits, iogp_logits, latency_ms=latency_ms
-        )
+        try:
+            return self.postprocessor.process_batch(
+                records, sif_logits, iogp_logits, latency_ms=latency_ms
+            )
+        except (IndexError, TypeError, ValueError) as error:
+            raise InvalidOutputError(f"invalid model output: {error}") from error
 
     def infer_batch(
         self,
@@ -159,7 +200,7 @@ class ONNXInferenceEngine:
         mask = np.asarray(attention_mask)
         token_types = None if token_type_ids is None else np.asarray(token_type_ids)
         if len(records) != len(ids):
-            raise ValueError("record and tensor batch sizes must match")
+            raise InputCompatibilityError("record and tensor batch sizes must match")
         results: list[ModelInferenceResult] = []
         for start in range(0, len(records), self.max_batch_size):
             stop = min(start + self.max_batch_size, len(records))

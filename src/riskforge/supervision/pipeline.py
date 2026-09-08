@@ -25,9 +25,16 @@ class WeakLabelBatch:
     lf_names: tuple[str, ...]
     votes: np.ndarray
     probabilities: np.ndarray
+    lf_versions: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         sample_count = len(self.log_ids)
+        if not self.lf_versions:
+            object.__setattr__(self, "lf_versions", ("unversioned",) * len(self.lf_names))
+        if len(self.lf_versions) != len(self.lf_names) or any(
+            not version for version in self.lf_versions
+        ):
+            raise ValueError("LF versions must contain one non-empty value per LF")
         if self.votes.shape != (sample_count, len(self.lf_names)):
             raise ValueError("vote matrix shape does not match batch metadata")
         if self.probabilities.shape != (sample_count, 2):
@@ -50,6 +57,7 @@ class WeakLabelBatch:
                         name: int(vote)
                         for name, vote in zip(self.lf_names, self.votes[index], strict=True)
                     },
+                    "lf_versions": dict(zip(self.lf_names, self.lf_versions, strict=True)),
                     "p_non_sif": float(self.probabilities[index, NON_SIF]),
                     "p_sif_p": float(self.probabilities[index, SIF_P]),
                 }
@@ -89,6 +97,7 @@ class WeakSupervisionPipeline:
             lf_names=tuple(lf.name for lf in self.lfs),
             votes=votes.copy(),
             probabilities=probabilities.copy(),
+            lf_versions=tuple(lf.version for lf in self.lfs),
         )
 
     @staticmethod
