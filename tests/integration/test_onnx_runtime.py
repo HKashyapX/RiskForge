@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import onnx
@@ -69,7 +69,7 @@ def _write_dynamic_test_model(path) -> None:
 def _record(index: int) -> IncidentNormalizedRecord:
     return IncidentNormalizedRecord(
         log_id=f"ORT_{index:03d}",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="RIG_01",
         asset_type=AssetType.DRILLING_RIG,
         raw_narrative="Routine inspection completed.",
