@@ -95,11 +95,11 @@ class ConflictWriter(FakeWriter):
         raise PersistenceConflictError("duplicate")
 
 
-def _service(*, authorizer=True, writer=None, record=None):
+def _service(*, authorizer: FakeAuthorizer | None = None, writer=None, record=None):
     return ReviewService(
         FakeReader(record or _stored()),
         writer or FakeWriter(),
-        FakeAuthorizer(authorizer),
+        authorizer or FakeAuthorizer(),
     )
 
 
@@ -124,9 +124,23 @@ def test_all_review_actions_are_recorded(action: ReviewAction) -> None:
     assert event.actor_id == "reviewer-1"
 
 
+def test_authorization_receives_exact_review_context() -> None:
+    authorizer = FakeAuthorizer()
+    service = _service(authorizer=authorizer)
+    service.decide(
+        log_id="LOG_1",
+        decision_id="D1",
+        reviewer_id="reviewer-7",
+        action=ReviewAction.ESCALATE,
+        reason="Reviewed.",
+        decided_at=NOW,
+    )
+    assert authorizer.calls == [("reviewer-7", "LOG_1", ReviewAction.ESCALATE)]
+
+
 def test_permission_denial_prevents_write() -> None:
     writer = FakeWriter()
-    service = _service(authorizer=False, writer=writer)
+    service = _service(authorizer=FakeAuthorizer(False), writer=writer)
     with pytest.raises(ReviewPermissionError):
         service.decide(
             log_id="LOG_1",
@@ -140,7 +154,8 @@ def test_permission_denial_prevents_write() -> None:
 
 
 def test_missing_incident_is_rejected_before_permission_check() -> None:
-    service = _service(record=None)
+    authorizer = FakeAuthorizer()
+    service = _service(authorizer=authorizer, record=None)
     with pytest.raises(ReviewNotFoundError):
         service.decide(
             log_id="MISSING",
@@ -150,6 +165,7 @@ def test_missing_incident_is_rejected_before_permission_check() -> None:
             reason="Missing.",
             decided_at=NOW,
         )
+    assert authorizer.calls == []
 
 
 def test_original_automated_result_is_not_mutated() -> None:
