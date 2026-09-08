@@ -2,7 +2,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from riskforge.core.contracts import AssetType, ModelInferenceResult, OperationalTriad, RoutingBucket, IncidentNormalizedRecord
+from riskforge.core.contracts import (
+    AssetType,
+    IncidentNormalizedRecord,
+    ModelInferenceResult,
+    OperationalTriad,
+    RoutingBucket,
+)
 from riskforge.persistence.exceptions import PersistenceConflictError
 from riskforge.persistence.models import (
     AuditEvent,
@@ -23,7 +29,13 @@ from riskforge.persistence.sqlite.repository import (
 NOW = datetime(2026, 1, 1, 12, tzinfo=UTC)
 
 
-def _stored(log_id: str, *, timestamp: datetime = NOW, asset_id: str = "RIG_01", score: float = 0.2) -> StoredIncidentResult:
+def _stored(
+    log_id: str,
+    *,
+    timestamp: datetime = NOW,
+    asset_id: str = "RIG_01",
+    score: float = 0.2,
+) -> StoredIncidentResult:
     incident = IncidentNormalizedRecord(
         log_id=log_id,
         timestamp=timestamp,
@@ -37,7 +49,11 @@ def _stored(log_id: str, *, timestamp: datetime = NOW, asset_id: str = "RIG_01",
         raw_sif_p_score=score,
         calibrated_sif_p_score=score,
         deterministic_override=False,
-        routing=RoutingBucket.CRITICAL_ESCALATION if score >= 0.65 else RoutingBucket.AUTO_DISMISS,
+        routing=(
+            RoutingBucket.CRITICAL_ESCALATION
+            if score >= 0.65
+            else RoutingBucket.AUTO_DISMISS
+        ),
         matched_iogp_rules=[],
         triad=OperationalTriad(),
         latency_ms=1.0,
@@ -45,7 +61,12 @@ def _stored(log_id: str, *, timestamp: datetime = NOW, asset_id: str = "RIG_01",
     return StoredIncidentResult(incident=incident, result=result)
 
 
-def _decision(decision_id: str, log_id: str = "LOG_1", *, when: datetime = NOW) -> ReviewDecision:
+def _decision(
+    decision_id: str,
+    log_id: str = "LOG_1",
+    *,
+    when: datetime = NOW,
+) -> ReviewDecision:
     return ReviewDecision(
         decision_id=decision_id,
         log_id=log_id,
@@ -69,11 +90,21 @@ def _event(event_id: str, log_id: str = "LOG_1", *, when: datetime = NOW) -> Aud
 
 def test_sqlite_incident_result_idempotency_and_deterministic_queries(tmp_path) -> None:
     repo = SQLiteIncidentResultRepository(tmp_path / "riskforge.db")
-    repo.create_idempotent(_stored("LOG_2", timestamp=NOW + timedelta(seconds=2), asset_id="RIG_02", score=0.9))
-    repo.create_idempotent(_stored("LOG_1", timestamp=NOW, asset_id="RIG_01", score=0.2))
+    repo.create_idempotent(
+        _stored(
+            "LOG_2",
+            timestamp=NOW + timedelta(seconds=2),
+            asset_id="RIG_02",
+            score=0.9,
+        )
+    )
+    repo.create_idempotent(_stored("LOG_1", timestamp=NOW, asset_id="RIG_01"))
     assert repo.get("LOG_1") == _stored("LOG_1")
     assert repo.list().items[0].log_id == "LOG_1"
-    filtered = repo.list(IncidentResultFilter(asset_id="RIG_02"), page=PageRequest(limit=1))
+    filtered = repo.list(
+        IncidentResultFilter(asset_id="RIG_02"),
+        page=PageRequest(limit=1),
+    )
     assert filtered.total == 1
     assert filtered.items[0].log_id == "LOG_2"
     with pytest.raises(PersistenceConflictError):
