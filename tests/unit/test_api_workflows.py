@@ -13,7 +13,6 @@ from riskforge.application.workflow_models import (
     ReviewDecisionView,
 )
 from riskforge.authentication.principal import Principal
-from riskforge.authentication.protocols import AuthenticationService
 from riskforge.core.contracts import (
     AssetRiskSummary,
     AssetType,
