@@ -44,6 +44,7 @@ jobs:
           src/riskforge/supervision
           src/riskforge/serving
           tests/unit/test_application.py
+          tests/unit/test_application_inference_adapter.py
           tests/unit/test_persistence.py
           tests/unit/test_review_workflow.py
           tests/unit/test_serving.py
