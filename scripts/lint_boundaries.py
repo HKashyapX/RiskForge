@@ -74,6 +74,26 @@ FORBIDDEN_IMPORTS = {
         "riskforge.serving",
         "riskforge.metrics",
     ],
+    "api": [
+        "torch",
+        "transformers",
+        "onnx",
+        "onnxruntime",
+        "riskforge.modeling",
+        "riskforge.normalization",
+        "riskforge.supervision",
+        "riskforge.serving",
+        "riskforge.metrics",
+        "riskforge.persistence",
+        "riskforge.review",
+    ],
+    "runtime": [
+        "torch",
+        "transformers",
+        "onnx",
+        "onnxruntime",
+        "riskforge.modeling",
+    ],
 }
 
 
