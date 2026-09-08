@@ -23,3 +23,11 @@ class InvalidOutputError(ServingError, ValueError):
 
 class WarmupError(ServingError):
     """Raised when startup warm-up cannot complete successfully."""
+
+
+class RequestQueueFullError(ServingError):
+    """Raised when bounded request capacity has been exhausted."""
+
+
+class BatcherClosedError(ServingError):
+    """Raised when work is submitted after batcher shutdown begins."""
