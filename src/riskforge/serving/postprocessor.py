@@ -48,7 +48,7 @@ def _sigmoid(values: np.ndarray) -> np.ndarray:
     output[positive] = 1.0 / (1.0 + np.exp(-values[positive]))
     exponential = np.exp(values[~positive])
     output[~positive] = exponential / (1.0 + exponential)
-    return output
+    return np.asarray(output, dtype=np.float64)
 
 
 def _sif_probabilities(output: np.ndarray) -> np.ndarray:
@@ -128,10 +128,11 @@ class InferencePostprocessor:
         if len(records) != len(raw_scores) or len(records) != rule_logits.shape[0]:
             raise ValueError("record and output batch sizes must match")
         rule_scores = _sigmoid(rule_logits)
-        if np.isscalar(latency_ms):
-            latencies = np.full(len(records), float(latency_ms), dtype=np.float64)
+        latency_values = np.asarray(latency_ms, dtype=np.float64)
+        if latency_values.ndim == 0:
+            latencies = np.full(len(records), latency_values, dtype=np.float64)
         else:
-            latencies = np.asarray(latency_ms, dtype=np.float64)
+            latencies = latency_values
             if latencies.shape != (len(records),):
                 raise ValueError("latency_ms must be scalar or have one value per record")
 
