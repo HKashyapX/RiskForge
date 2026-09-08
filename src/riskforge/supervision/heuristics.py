@@ -1,4 +1,5 @@
 import re
+
 from riskforge.core.contracts import IncidentNormalizedRecord
 from riskforge.supervision.engine import (
     ABSTAIN,
