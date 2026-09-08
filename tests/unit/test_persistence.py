@@ -5,8 +5,8 @@ from pydantic import ValidationError
 
 from riskforge.core.contracts import (
     AssetType,
-    LifeSavingRule,
     IncidentNormalizedRecord,
+    LifeSavingRule,
     ModelInferenceResult,
     OperationalTriad,
     RoutingBucket,
@@ -59,8 +59,17 @@ def _result(log_id: str, *, score: float = 0.2) -> ModelInferenceResult:
     )
 
 
-def _stored(log_id: str, *, score: float = 0.2, asset_id: str = "RIG_01", timestamp: datetime = NOW) -> StoredIncidentResult:
-    return StoredIncidentResult(incident=_incident(log_id, asset_id=asset_id, timestamp=timestamp), result=_result(log_id, score=score))
+def _stored(
+    log_id: str,
+    *,
+    score: float = 0.2,
+    asset_id: str = "RIG_01",
+    timestamp: datetime = NOW,
+) -> StoredIncidentResult:
+    return StoredIncidentResult(
+        incident=_incident(log_id, asset_id=asset_id, timestamp=timestamp),
+        result=_result(log_id, score=score),
+    )
 
 
 class FakeIncidentResults:
@@ -162,7 +171,9 @@ def test_incident_result_creation_is_idempotent_and_conflict_safe() -> None:
 
 def test_incident_query_filters_and_paginates_deterministically() -> None:
     repo = FakeIncidentResults()
-    repo.create_idempotent(_stored("LOG_2", timestamp=NOW + timedelta(seconds=1), score=0.8))
+    repo.create_idempotent(
+        _stored("LOG_2", timestamp=NOW + timedelta(seconds=1), score=0.8)
+    )
     repo.create_idempotent(_stored("LOG_1", timestamp=NOW))
     page = repo.list(
         IncidentResultFilter(routing=RoutingBucket.CRITICAL_ESCALATION),
