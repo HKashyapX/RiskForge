@@ -19,7 +19,6 @@ from riskforge.core.contracts import (
     RoutingBucket,
 )
 
-
 NOW = datetime(2026, 1, 1, 12, tzinfo=UTC)
 
 
@@ -57,14 +56,16 @@ class FakeEncoder:
         ids = np.array([1, 2, 3], dtype=np.int64)
         return EncodedIncident(ids, np.ones_like(ids))
 
-    def encode_batch(self, records) -> EncodedIncident:
+    def encode_batch(
+        self, records: list[IncidentNormalizedRecord]
+    ) -> EncodedIncident:
         self.batch_calls.append(tuple(record.log_id for record in records))
         ids = np.ones((len(records), 3), dtype=np.int64)
         return EncodedIncident(ids, np.ones_like(ids))
 
 
 class FakeEngine:
-    def __init__(self, results=None, *, fail=False) -> None:
+    def __init__(self, results=None, *, fail: bool = False) -> None:
         self.results = results
         self.fail = fail
         self.single_calls = []
@@ -73,18 +74,22 @@ class FakeEngine:
     def infer(self, record, input_ids, attention_mask, token_type_ids=None):
         if self.fail:
             raise RuntimeError("serving unavailable")
-        self.single_calls.append((record.log_id, input_ids.copy(), attention_mask.copy(), token_type_ids))
+        self.single_calls.append(
+            (record.log_id, input_ids.copy(), attention_mask.copy(), token_type_ids)
+        )
         return self.results or _result(record.log_id)
 
     def infer_batch(self, records, input_ids, attention_mask, token_type_ids=None):
         if self.fail:
             raise RuntimeError("serving unavailable")
-        self.batch_calls.append((
-            tuple(record.log_id for record in records),
-            input_ids.copy(),
-            attention_mask.copy(),
-            token_type_ids,
-        ))
+        self.batch_calls.append(
+            (
+                tuple(record.log_id for record in records),
+                input_ids.copy(),
+                attention_mask.copy(),
+                token_type_ids,
+            )
+        )
         return self.results or [_result(record.log_id) for record in records]
 
 
@@ -137,8 +142,8 @@ def test_serving_failures_are_translated_without_narrative() -> None:
 
 def test_encoded_incident_validates_shapes_and_casts_dtype() -> None:
     encoded = EncodedIncident([1, 2], [1, 1])
-    assert encoded.input_ids.dtype is np.dtype(np.int64)
-    assert encoded.attention_mask.dtype is np.dtype(np.int64)
+    assert encoded.input_ids.dtype == np.dtype(np.int64)
+    assert encoded.attention_mask.dtype == np.dtype(np.int64)
     with pytest.raises(ValueError):
         EncodedIncident([1, 2], [1])
     with pytest.raises(ValueError):
