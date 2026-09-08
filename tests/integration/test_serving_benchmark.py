@@ -41,3 +41,11 @@ def test_benchmark_tool_runs_against_real_onnx_runtime(tmp_path) -> None:
     assert report["concurrent"]["request_count"] == 2
     assert report["cold"]["load_and_first_inference_ms"] >= 0.0
     assert report["target_latency_ms"] == 35.0
+    assert report["process_memory"]["peak_rss_bytes"] > 0
+    assert report["artifact"]["quantization"] == "NONE"
+    assert report["benchmark_parameters"]["sequence_length"] == 8
+    assert report["environment"]["onnxruntime_version"]
+    assert report["generated_at"]
+    assert report["measurement_scope"] == "pretokenized_onnx_execution_and_postprocessing"
+    assert report["acceptance"]["int8_artifact_passed"] is False
+    assert report["acceptance"]["passed"] is False

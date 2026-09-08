@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 import os
+import platform
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from threading import Event, Thread
 from time import perf_counter
-from typing import Any
+from typing import Any, Self
 
 import numpy as np
+import onnxruntime as ort
+import psutil
 
 from riskforge.core.contracts import AssetType, IncidentNormalizedRecord
+from riskforge.serving.artifact import ModelArtifactManifest
 from riskforge.serving.batching import ConcurrentRequestBatcher
 from riskforge.serving.engine import ONNXInferenceEngine
 
@@ -34,6 +40,63 @@ class BatchBenchmark:
     iterations: int
     latency: LatencySummary
     rss_growth_bytes: int
+    baseline_rss_bytes: int
+    peak_rss_bytes: int
+    final_rss_bytes: int
+
+
+@dataclass(frozen=True)
+class MemorySummary:
+    baseline_rss_bytes: int
+    peak_rss_bytes: int
+    final_rss_bytes: int
+    rss_growth_bytes: int
+
+
+class PeakRssMonitor:
+    """Sample total process RSS on every supported development platform."""
+
+    def __init__(self, poll_interval_seconds: float = 0.001) -> None:
+        if poll_interval_seconds <= 0.0:
+            raise ValueError("poll interval must be positive")
+        self._poll_interval_seconds = poll_interval_seconds
+        self._stop = Event()
+        self._thread: Thread | None = None
+        self._baseline = 0
+        self._peak = 0
+        self._final = 0
+
+    def __enter__(self) -> Self:
+        self._baseline = self._read()
+        self._peak = self._baseline
+        self._stop.clear()
+        self._thread = Thread(target=self._sample_until_stopped, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, _exc_type: object, _exc: object, _traceback: object) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join()
+        self._final = self._read()
+        self._peak = max(self._peak, self._final)
+
+    def summary(self) -> MemorySummary:
+        if self._thread is None or not self._stop.is_set():
+            raise RuntimeError("memory summary is available only after monitoring completes")
+        return MemorySummary(
+            baseline_rss_bytes=self._baseline,
+            peak_rss_bytes=self._peak,
+            final_rss_bytes=self._final,
+            rss_growth_bytes=max(0, self._final - self._baseline),
+        )
+
+    def _read(self) -> int:
+        return current_rss_bytes()
+
+    def _sample_until_stopped(self) -> None:
+        while not self._stop.wait(self._poll_interval_seconds):
+            self._peak = max(self._peak, self._read())
 
 
 def percentile(samples: list[float], percentile_value: float) -> float:
@@ -61,13 +124,16 @@ def latency_summary(samples: list[float]) -> LatencySummary:
 
 
 def current_rss_bytes() -> int:
-    """Read current resident memory without network or third-party monitoring agents."""
-    statm = Path("/proc/self/statm")
+    """Return total resident process memory using a cross-platform implementation."""
     try:
-        resident_pages = int(statm.read_text(encoding="ascii").split()[1])
-    except (IndexError, OSError, ValueError):
-        return 0
-    return resident_pages * os.sysconf("SC_PAGE_SIZE")
+        return int(psutil.Process().memory_info().rss)
+    except psutil.Error as error:
+        statm = Path("/proc/self/statm")
+        try:
+            resident_pages = int(statm.read_text(encoding="ascii").split()[1])
+            return resident_pages * int(os.sysconf("SC_PAGE_SIZE"))
+        except (AttributeError, IndexError, OSError, ValueError):
+            raise RuntimeError("process RSS measurement is unavailable") from error
 
 
 def synthetic_record(index: int) -> IncidentNormalizedRecord:
@@ -108,19 +174,22 @@ def benchmark_warm_batches(
             raise ValueError("benchmark batch size exceeds engine maximum")
         records, input_ids, attention_mask = _inputs(batch_size, sequence_length)
         engine.infer_batch(records, input_ids, attention_mask)
-        rss_before = current_rss_bytes()
         samples: list[float] = []
-        for _ in range(iterations):
-            started = perf_counter()
-            engine.infer_batch(records, input_ids, attention_mask)
-            samples.append((perf_counter() - started) * 1000.0)
-        rss_after = current_rss_bytes()
+        with PeakRssMonitor() as memory:
+            for _ in range(iterations):
+                started = perf_counter()
+                engine.infer_batch(records, input_ids, attention_mask)
+                samples.append((perf_counter() - started) * 1000.0)
+        memory_summary = memory.summary()
         results.append(
             BatchBenchmark(
                 batch_size=batch_size,
                 iterations=iterations,
                 latency=latency_summary(samples),
-                rss_growth_bytes=max(0, rss_after - rss_before),
+                rss_growth_bytes=memory_summary.rss_growth_bytes,
+                baseline_rss_bytes=memory_summary.baseline_rss_bytes,
+                peak_rss_bytes=memory_summary.peak_rss_bytes,
+                final_rss_bytes=memory_summary.final_rss_bytes,
             )
         )
     return results
@@ -139,7 +208,6 @@ def benchmark_concurrent_requests(
     input_ids = np.zeros(sequence_length, dtype=np.int64)
     attention_mask = np.ones_like(input_ids)
     samples: list[float] = []
-    rss_before = current_rss_bytes()
 
     def invoke(index: int, batcher: ConcurrentRequestBatcher) -> float:
         started = perf_counter()
@@ -147,7 +215,7 @@ def benchmark_concurrent_requests(
         future.result()
         return (perf_counter() - started) * 1000.0
 
-    with ConcurrentRequestBatcher(
+    with PeakRssMonitor() as memory, ConcurrentRequestBatcher(
         engine,
         max_queue_size=max(concurrency * 2, engine.max_batch_size),
         max_queue_delay_ms=max_queue_delay_ms,
@@ -158,13 +226,14 @@ def benchmark_concurrent_requests(
                 for index in range(concurrency)
             ]
             samples.extend(submission.result() for submission in submissions)
-    rss_after = current_rss_bytes()
+    memory_summary = memory.summary()
     return {
         "concurrency": concurrency,
         "iterations": iterations,
         "request_count": concurrency * iterations,
         "latency": asdict(latency_summary(samples)),
-        "rss_growth_bytes": max(0, rss_after - rss_before),
+        "memory": asdict(memory_summary),
+        "rss_growth_bytes": memory_summary.rss_growth_bytes,
     }
 
 
@@ -177,34 +246,89 @@ def benchmark_artifact(
     concurrency: int = 32,
     sequence_length: int = 256,
     max_queue_delay_ms: float = 5.0,
+    target_latency_ms: float = 35.0,
+    target_peak_rss_bytes: int = 1_200_000_000,
 ) -> dict[str, Any]:
-    rss_before = current_rss_bytes()
-    started = perf_counter()
-    engine = ONNXInferenceEngine.from_artifact(
-        model_path, manifest_path, max_batch_size=max(DEFAULT_BATCH_SIZES), warmup=False
-    )
-    record, input_ids, attention_mask = _inputs(1, sequence_length)
-    engine.infer_batch(record, input_ids, attention_mask)
-    cold_start_ms = (perf_counter() - started) * 1000.0
-    rss_after_cold = current_rss_bytes()
-    engine.warmup(sequence_length)
-
-    warm_batches = benchmark_warm_batches(
-        engine, iterations=iterations, sequence_length=sequence_length
-    )
-    concurrent = benchmark_concurrent_requests(
-        engine,
-        concurrency=concurrency,
-        iterations=concurrent_iterations,
-        sequence_length=sequence_length,
-        max_queue_delay_ms=max_queue_delay_ms,
-    )
+    if target_latency_ms <= 0.0 or target_peak_rss_bytes < 1:
+        raise ValueError("acceptance targets must be positive")
+    model = Path(model_path)
+    manifest = ModelArtifactManifest.load(manifest_path)
+    if sequence_length > manifest.max_sequence_length:
+        raise ValueError("benchmark sequence length exceeds artifact maximum")
+    with PeakRssMonitor() as overall_memory:
+        with PeakRssMonitor() as cold_memory:
+            started = perf_counter()
+            engine = ONNXInferenceEngine.from_artifact(
+                model, manifest_path, max_batch_size=max(DEFAULT_BATCH_SIZES), warmup=False
+            )
+            record, input_ids, attention_mask = _inputs(1, sequence_length)
+            engine.infer_batch(record, input_ids, attention_mask)
+            cold_start_ms = (perf_counter() - started) * 1000.0
+        engine.warmup(sequence_length)
+        warm_batches = benchmark_warm_batches(
+            engine, iterations=iterations, sequence_length=sequence_length
+        )
+        concurrent = benchmark_concurrent_requests(
+            engine,
+            concurrency=concurrency,
+            iterations=concurrent_iterations,
+            sequence_length=sequence_length,
+            max_queue_delay_ms=max_queue_delay_ms,
+        )
+    cold_summary = cold_memory.summary()
+    overall_summary = overall_memory.summary()
+    batch_one = next(result for result in warm_batches if result.batch_size == 1)
+    latency_passed = batch_one.latency.p95_ms <= target_latency_ms
+    memory_passed = overall_summary.peak_rss_bytes <= target_peak_rss_bytes
+    quantization_passed = manifest.quantization.upper() == "INT8"
     return {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "artifact": {
+            "backbone": manifest.backbone,
+            "model_sha256": manifest.model_sha256,
+            "model_size_bytes": model.stat().st_size,
+            "quantization": manifest.quantization,
+            "maximum_sequence_length": manifest.max_sequence_length,
+        },
+        "environment": {
+            "system": platform.system(),
+            "release": platform.release(),
+            "machine": platform.machine(),
+            "processor": platform.processor(),
+            "python_version": platform.python_version(),
+            "cpu_count": os.cpu_count(),
+            "byte_order": sys.byteorder,
+            "onnxruntime_version": ort.__version__,
+            "onnx_intra_op_threads": 4,
+            "onnx_inter_op_threads": 1,
+        },
+        "benchmark_parameters": {
+            "batch_sizes": list(DEFAULT_BATCH_SIZES),
+            "iterations": iterations,
+            "concurrent_iterations": concurrent_iterations,
+            "concurrency": concurrency,
+            "sequence_length": sequence_length,
+            "max_queue_delay_ms": max_queue_delay_ms,
+        },
+        "measurement_scope": "pretokenized_onnx_execution_and_postprocessing",
         "cold": {
             "load_and_first_inference_ms": cold_start_ms,
-            "rss_growth_bytes": max(0, rss_after_cold - rss_before),
+            "memory": asdict(cold_summary),
+            "rss_growth_bytes": cold_summary.rss_growth_bytes,
         },
         "warm_batches": [asdict(result) for result in warm_batches],
         "concurrent": concurrent,
-        "target_latency_ms": 35.0,
+        "process_memory": asdict(overall_summary),
+        "targets": {
+            "warm_batch_1_p95_ms": target_latency_ms,
+            "peak_rss_bytes": target_peak_rss_bytes,
+            "quantization": "INT8",
+        },
+        "acceptance": {
+            "warm_batch_1_latency_passed": latency_passed,
+            "peak_memory_passed": memory_passed,
+            "int8_artifact_passed": quantization_passed,
+            "passed": latency_passed and memory_passed and quantization_passed,
+        },
+        "target_latency_ms": target_latency_ms,
     }
