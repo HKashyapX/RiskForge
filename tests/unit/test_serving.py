@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 
@@ -17,7 +17,7 @@ def _record() -> IncidentNormalizedRecord:
     start = text.index("BOP")
     return IncidentNormalizedRecord(
         log_id="SERVE_001",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         asset_id="RIG_01",
         asset_type=AssetType.DRILLING_RIG,
         raw_narrative=text,
