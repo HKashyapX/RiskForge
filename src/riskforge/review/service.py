@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from riskforge.persistence.models import AuditEvent, AuditEventType, ReviewAction, ReviewDecision
 from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
+from riskforge.persistence.models import (
+    AuditEvent,
+    AuditEventType,
+    ReviewAction,
+    ReviewDecision,
+)
 from riskforge.review.exceptions import (
     ReviewConflictError,
     ReviewNotFoundError,
