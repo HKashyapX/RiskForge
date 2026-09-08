@@ -33,7 +33,18 @@ jobs:
             requirements-dev.txt
 
       - name: Install test dependencies
-        run: python -m pip install pytest numpy pydantic pyyaml onnx onnxruntime
+        run: python -m pip install pytest ruff numpy pydantic pyyaml onnx onnxruntime
+
+      - name: Lint supervision and serving
+        run: >-
+          python -m ruff check
+          src/riskforge/supervision
+          src/riskforge/serving
+          tests/unit/test_serving.py
+          tests/unit/test_supervision.py
+          tests/unit/test_supervision_robustness.py
+          tests/unit/test_supervision_pipeline.py
+          tests/integration/test_onnx_runtime.py
 
       - name: Check subsystem boundaries
         run: python scripts/lint_boundaries.py
