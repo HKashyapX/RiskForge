@@ -12,8 +12,8 @@ from riskforge.application.service import ApplicationService
 __all__ = [
     "ApplicationService",
     "EncodedIncident",
-    "InferenceEngine",
     "IncidentInputEncoder",
+    "InferenceEngine",
     "MetricsService",
     "ServingInferenceAdapter",
     "ServingInferenceEngine",
