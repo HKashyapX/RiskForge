@@ -50,6 +50,7 @@ jobs:
           tests/unit/test_supervision_hazards.py
           tests/unit/test_supervision_robustness.py
           tests/unit/test_supervision_pipeline.py
+          tests/unit/test_supervision_reproducibility.py
           tests/integration/test_onnx_runtime.py
           tests/integration/test_serving_benchmark.py
 
