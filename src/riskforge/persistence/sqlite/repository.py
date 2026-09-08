@@ -8,7 +8,6 @@ from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
 
-from riskforge.core.contracts import AssetType
 from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
 from riskforge.persistence.models import (
     AuditEvent,
@@ -237,7 +236,10 @@ class SQLiteIncidentResultRepository(_SQLiteRepositoryBase):
                 [*parameters, request.limit, request.offset],
             ).fetchall()
             return Page(
-                items=tuple(StoredIncidentResult.model_validate_json(row["record_json"]) for row in rows),
+                items=tuple(
+                    StoredIncidentResult.model_validate_json(row["record_json"])
+                    for row in rows
+                ),
                 offset=request.offset,
                 limit=request.limit,
                 total=total,
@@ -293,6 +295,7 @@ class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
         return self._list_history(
             table="review_decisions",
             timestamp_column="decided_at",
+            tie_column="decision_id",
             log_id=log_id,
             page=page,
             factory=lambda row: ReviewDecision(
@@ -310,6 +313,7 @@ class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
         *,
         table: str,
         timestamp_column: str,
+        tie_column: str,
         log_id: str,
         page: PageRequest | None,
         factory: Callable[[sqlite3.Row], object],
@@ -327,7 +331,7 @@ class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
                 f"""
                 SELECT * FROM {table}
                 WHERE log_id = ?
-                ORDER BY {timestamp_column} ASC, {"decision_id" if table == "review_decisions" else "event_id"} ASC
+                ORDER BY {timestamp_column} ASC, {tie_column} ASC
                 LIMIT ? OFFSET ?
                 """,
                 (log_id, request.limit, request.offset),
@@ -339,7 +343,7 @@ class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
                 total=total,
             )
         except sqlite3.Error as error:
-            raise PersistenceError("cannot query review history") from error
+            raise PersistenceError("cannot query persistence history") from error
         finally:
             connection.close()
 
@@ -348,7 +352,36 @@ class SQLiteAuditEventRepository(_SQLiteRepositoryBase):
     """SQLite implementation of append-only audit events."""
 
     def append(self, event: AuditEvent) -> AuditEvent:
-        return self._append_one(event)
+        _validate_identifier(event.event_id, "event_id")
+        _validate_identifier(event.log_id, "log_id")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                """
+                INSERT INTO audit_events(
+                    event_id, log_id, event_type, actor_id, occurred_at, reason
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event.event_id,
+                    event.log_id,
+                    event.event_type.value,
+                    event.actor_id,
+                    event.occurred_at.isoformat(),
+                    event.reason,
+                ),
+            )
+            connection.execute("COMMIT")
+            return event
+        except sqlite3.IntegrityError as error:
+            self._rollback(connection)
+            raise PersistenceConflictError("event_id already exists") from error
+        except sqlite3.Error as error:
+            self._rollback(connection)
+            raise PersistenceError("cannot append audit event") from error
+        finally:
+            connection.close()
 
     def append_many(self, events: Sequence[AuditEvent]) -> tuple[AuditEvent, ...]:
         values = tuple(events)
@@ -434,37 +467,5 @@ class SQLiteAuditEventRepository(_SQLiteRepositoryBase):
             )
         except sqlite3.Error as error:
             raise PersistenceError("cannot query audit history") from error
-        finally:
-            connection.close()
-
-    def _append_one(self, event: AuditEvent) -> AuditEvent:
-        _validate_identifier(event.event_id, "event_id")
-        _validate_identifier(event.log_id, "log_id")
-        connection = self._connect()
-        try:
-            connection.execute("BEGIN IMMEDIATE")
-            connection.execute(
-                """
-                INSERT INTO audit_events(
-                    event_id, log_id, event_type, actor_id, occurred_at, reason
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    event.event_id,
-                    event.log_id,
-                    event.event_type.value,
-                    event.actor_id,
-                    event.occurred_at.isoformat(),
-                    event.reason,
-                ),
-            )
-            connection.execute("COMMIT")
-            return event
-        except sqlite3.IntegrityError as error:
-            self._rollback(connection)
-            raise PersistenceConflictError("event_id already exists") from error
-        except sqlite3.Error as error:
-            self._rollback(connection)
-            raise PersistenceError("cannot append audit event") from error
         finally:
             connection.close()
