@@ -10,10 +10,38 @@ from typing import Any
 import numpy as np
 
 from riskforge.core.contracts import IncidentNormalizedRecord, ModelInferenceResult
+from riskforge.serving.artifact import (
+    ModelArtifactManifest,
+    TemperatureScaler,
+    validate_model_checksum,
+)
 from riskforge.serving.postprocessor import InferencePostprocessor
 
 
 class ONNXInferenceEngine:
+    @classmethod
+    def from_artifact(
+        cls,
+        model_path: str | Path,
+        manifest_path: str | Path,
+        *,
+        max_batch_size: int = 32,
+        warmup: bool = True,
+    ) -> ONNXInferenceEngine:
+        manifest = ModelArtifactManifest.load(manifest_path)
+        validate_model_checksum(model_path, manifest.model_sha256)
+        engine = cls(
+            model_path,
+            postprocessor=InferencePostprocessor(
+                calibrator=TemperatureScaler(manifest.temperature)
+            ),
+            max_batch_size=max_batch_size,
+        )
+        manifest.validate_session(engine.input_names, engine.output_names)
+        if warmup:
+            engine.warmup(manifest.max_sequence_length)
+        return engine
+
     def __init__(
         self,
         model_path: str | Path,
@@ -49,6 +77,14 @@ class ONNXInferenceEngine:
         self.output_names = tuple(item.name for item in self.session.get_outputs())
         if len(self.output_names) < 2:
             raise ValueError("the ONNX model must expose SIF and IOGP outputs")
+
+    def warmup(self, sequence_length: int = 8) -> None:
+        if sequence_length < 1:
+            raise ValueError("sequence_length must be positive")
+        sample = np.zeros((1, sequence_length), dtype=np.int64)
+        feed = self._input_feed(sample, np.ones_like(sample), None)
+        outputs = self.session.run(None, feed)
+        self._split_outputs(outputs)
 
     def _input_feed(
         self,
