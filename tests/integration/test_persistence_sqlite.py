@@ -30,7 +30,6 @@ from riskforge.persistence.sqlite.repository import (
     SQLiteReviewDecisionRepository,
 )
 
-
 NOW = datetime(2026, 1, 1, 12, tzinfo=UTC)
 
 
