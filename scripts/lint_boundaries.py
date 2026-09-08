@@ -47,6 +47,7 @@ FORBIDDEN_IMPORTS = {
         "riskforge.supervision",
         "riskforge.serving",
         "riskforge.persistence",
+        "riskforge.review",
     ],
     "persistence": [
         "torch",
@@ -58,6 +59,20 @@ FORBIDDEN_IMPORTS = {
         "riskforge.normalization",
         "riskforge.supervision",
         "riskforge.serving",
+        "riskforge.application",
+        "riskforge.review",
+    ],
+    "review": [
+        "torch",
+        "transformers",
+        "onnx",
+        "onnxruntime",
+        "fastapi",
+        "riskforge.modeling",
+        "riskforge.normalization",
+        "riskforge.supervision",
+        "riskforge.serving",
+        "riskforge.metrics",
     ],
 }
 
