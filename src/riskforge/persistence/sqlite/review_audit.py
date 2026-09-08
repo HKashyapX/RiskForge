@@ -7,8 +7,8 @@ import sqlite3
 from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
 from riskforge.persistence.models import AuditEvent, AuditEventType, ReviewDecision
 from riskforge.persistence.sqlite.repository import (
-    _SQLiteRepositoryBase,
     _iso_timestamp,
+    _SQLiteRepositoryBase,
     _validate_identifier,
 )
 
