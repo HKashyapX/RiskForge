@@ -8,7 +8,12 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from riskforge.core.contracts import AssetType, ModelInferenceResult, RoutingBucket
+from riskforge.core.contracts import (
+    AssetType,
+    IncidentNormalizedRecord,
+    ModelInferenceResult,
+    RoutingBucket,
+)
 
 
 class ReviewAction(str, Enum):
@@ -102,3 +107,28 @@ class AuditEvent(BaseModel):
     actor_id: str = Field(min_length=1)
     occurred_at: datetime
     reason: str | None = None
+
+
+class StoredIncidentResult(BaseModel):
+    """Immutable persisted incident context and automated inference result."""
+
+    model_config = ConfigDict(frozen=True)
+
+    incident: IncidentNormalizedRecord
+    result: ModelInferenceResult
+
+    @property
+    def log_id(self) -> str:
+        return self.result.log_id
+
+    @property
+    def timestamp(self) -> datetime:
+        return self.incident.timestamp
+
+    @property
+    def asset_id(self) -> str:
+        return self.incident.asset_id
+
+    @property
+    def asset_type(self) -> AssetType:
+        return self.incident.asset_type
