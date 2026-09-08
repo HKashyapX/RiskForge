@@ -1,25 +1,22 @@
-"""SQLite repositories for isolated development and integration testing."""
+"""SQLite repository implementations for isolated development and integration tests."""
 
 from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
-from threading import RLock
 
-from riskforge.core.contracts import ModelInferenceResult
-from riskforge.persistence.exceptions import (
-    PersistenceConflictError,
-    PersistenceError,
-)
+from riskforge.core.contracts import AssetType
+from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
 from riskforge.persistence.models import (
     AuditEvent,
     IncidentResultFilter,
     Page,
     PageRequest,
     ReviewDecision,
+    StoredIncidentResult,
 )
 
 _SCHEMA = """
@@ -30,9 +27,8 @@ CREATE TABLE IF NOT EXISTS incident_results (
     asset_type TEXT NOT NULL,
     routing TEXT NOT NULL,
     calibrated_sif_p_score REAL NOT NULL,
-    result_json TEXT NOT NULL
+    record_json TEXT NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_incident_results_timestamp_log_id
     ON incident_results(timestamp, log_id);
 CREATE INDEX IF NOT EXISTS idx_incident_results_asset_id
@@ -52,7 +48,6 @@ CREATE TABLE IF NOT EXISTS review_decisions (
     decided_at TEXT NOT NULL,
     reason TEXT NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_review_decisions_incident
     ON review_decisions(log_id, decided_at, decision_id);
 
@@ -64,16 +59,16 @@ CREATE TABLE IF NOT EXISTS audit_events (
     occurred_at TEXT NOT NULL,
     reason TEXT
 );
-
 CREATE INDEX IF NOT EXISTS idx_audit_events_incident
     ON audit_events(log_id, occurred_at, event_id);
 """
 
 
-def _json_payload(model: object) -> str:
-    if not hasattr(model, "model_dump"):
-        raise TypeError("persistence payload must be a Pydantic model")
-    payload = model.model_dump(mode="json")  # type: ignore[attr-defined]
+def _canonical_json(model: object) -> str:
+    try:
+        payload = model.model_dump(mode="json")  # type: ignore[attr-defined]
+    except AttributeError as error:
+        raise TypeError("persistence payload must be a Pydantic model") from error
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
@@ -81,16 +76,19 @@ def _parse_datetime(value: str) -> datetime:
     return datetime.fromisoformat(value)
 
 
-class SQLitePersistence:
-    """Concrete SQLite implementation of all persistence repositories."""
+def _validate_identifier(value: str, field_name: str) -> None:
+    if not value.strip():
+        raise ValueError(f"{field_name} must not be empty")
 
+
+class _SQLiteRepositoryBase:
     def __init__(self, database_path: str | Path) -> None:
-        if str(database_path).strip() == "":
+        path_text = str(database_path).strip()
+        if not path_text:
             raise ValueError("database_path must not be empty")
         self.database_path = Path(database_path)
         if self.database_path.parent != Path("."):
             self.database_path.parent.mkdir(parents=True, exist_ok=True)
-        self._lock = RLock()
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
@@ -101,81 +99,89 @@ class SQLitePersistence:
                 isolation_level=None,
             )
             connection.row_factory = sqlite3.Row
-            connection.execute("PRAGMA foreign_keys = ON")
             return connection
         except sqlite3.Error as error:
             raise PersistenceError("cannot open SQLite persistence database") from error
 
     def _initialize(self) -> None:
-        with self._lock:
-            connection = self._connect()
-            try:
-                connection.executescript(_SCHEMA)
-            except sqlite3.Error as error:
-                raise PersistenceError("cannot initialize SQLite persistence schema") from error
-            finally:
-                connection.close()
+        connection = self._connect()
+        try:
+            connection.executescript(_SCHEMA)
+        except sqlite3.Error as error:
+            raise PersistenceError("cannot initialize SQLite persistence schema") from error
+        finally:
+            connection.close()
 
-    def close(self) -> None:
-        """Release repository resources; connections are per operation."""
+    @staticmethod
+    def _rollback(connection: sqlite3.Connection) -> None:
+        try:
+            connection.execute("ROLLBACK")
+        except sqlite3.Error:
+            pass
 
-    def create_idempotent(self, result: ModelInferenceResult) -> ModelInferenceResult:
-        if not result.log_id.strip():
-            raise ValueError("log_id must not be empty")
-        payload = _json_payload(result)
-        with self._lock:
-            connection = self._connect()
-            try:
-                connection.execute("BEGIN IMMEDIATE")
-                existing = connection.execute(
-                    "SELECT result_json FROM incident_results WHERE log_id = ?",
-                    (result.log_id,),
-                ).fetchone()
-                if existing is not None:
-                    if existing["result_json"] != payload:
-                        raise PersistenceConflictError(
-                            "log_id already contains a different result"
-                        )
-                    connection.execute("COMMIT")
-                    return ModelInferenceResult.model_validate_json(existing["result_json"])
-                connection.execute(
-                    """
-                    INSERT INTO incident_results(
-                        log_id, timestamp, asset_id, asset_type, routing,
-                        calibrated_sif_p_score, result_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        result.log_id,
-                        result.triad.model_dump_json() if False else result.log_id,
-                        result.log_id,
-                        result.log_id,
-                        result.routing.value,
-                        result.calibrated_sif_p_score,
-                        payload,
-                    ),
-                )
+
+class SQLiteIncidentResultRepository(_SQLiteRepositoryBase):
+    """SQLite implementation of immutable, idempotent incident-result storage."""
+
+    def create_idempotent(self, record: StoredIncidentResult) -> StoredIncidentResult:
+        _validate_identifier(record.log_id, "log_id")
+        payload = _canonical_json(record)
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT record_json FROM incident_results WHERE log_id = ?",
+                (record.log_id,),
+            ).fetchone()
+            if existing is not None:
+                if existing["record_json"] != payload:
+                    raise PersistenceConflictError(
+                        "log_id already contains a different persisted result"
+                    )
                 connection.execute("COMMIT")
-                return result
-            except PersistenceConflictError:
-                connection.execute("ROLLBACK")
-                raise
-            except sqlite3.Error as error:
-                connection.execute("ROLLBACK")
-                raise PersistenceError("cannot persist incident inference result") from error
-            finally:
-                connection.close()
+                return StoredIncidentResult.model_validate_json(existing["record_json"])
+            connection.execute(
+                """
+                INSERT INTO incident_results(
+                    log_id, timestamp, asset_id, asset_type, routing,
+                    calibrated_sif_p_score, record_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.log_id,
+                    record.timestamp.isoformat(),
+                    record.asset_id,
+                    record.asset_type.value,
+                    record.result.routing.value,
+                    record.result.calibrated_sif_p_score,
+                    payload,
+                ),
+            )
+            connection.execute("COMMIT")
+            return record
+        except PersistenceConflictError:
+            self._rollback(connection)
+            raise
+        except sqlite3.IntegrityError as error:
+            self._rollback(connection)
+            raise PersistenceConflictError("log_id already exists") from error
+        except sqlite3.Error as error:
+            self._rollback(connection)
+            raise PersistenceError("cannot persist incident inference result") from error
+        finally:
+            connection.close()
 
-    def get(self, log_id: str) -> ModelInferenceResult | None:
-        if not log_id.strip():
-            raise ValueError("log_id must not be empty")
+    def get(self, log_id: str) -> StoredIncidentResult | None:
+        _validate_identifier(log_id, "log_id")
         connection = self._connect()
         try:
             row = connection.execute(
-                "SELECT result_json FROM incident_results WHERE log_id = ?",
+                "SELECT record_json FROM incident_results WHERE log_id = ?",
                 (log_id,),
             ).fetchone()
-            return None if row is None else ModelInferenceResult.model_validate_json(row["result_json"])
+            if row is None:
+                return None
+            return StoredIncidentResult.model_validate_json(row["record_json"])
         except sqlite3.Error as error:
             raise PersistenceError("cannot read incident inference result") from error
         finally:
@@ -186,7 +192,7 @@ class SQLitePersistence:
         filters: IncidentResultFilter | None = None,
         *,
         page: PageRequest | None = None,
-    ) -> Page[ModelInferenceResult]:
+    ) -> Page[StoredIncidentResult]:
         active_filter = filters or IncidentResultFilter()
         request = page or PageRequest()
         clauses: list[str] = []
@@ -222,7 +228,7 @@ class SQLitePersistence:
             )
             rows = connection.execute(
                 f"""
-                SELECT result_json
+                SELECT record_json
                 FROM incident_results
                 {where}
                 ORDER BY timestamp ASC, log_id ASC
@@ -230,18 +236,24 @@ class SQLitePersistence:
                 """,
                 [*parameters, request.limit, request.offset],
             ).fetchall()
-            items = tuple(ModelInferenceResult.model_validate_json(row["result_json"]) for row in rows)
-            return Page(items=items, offset=request.offset, limit=request.limit, total=total)
+            return Page(
+                items=tuple(StoredIncidentResult.model_validate_json(row["record_json"]) for row in rows),
+                offset=request.offset,
+                limit=request.limit,
+                total=total,
+            )
         except sqlite3.Error as error:
             raise PersistenceError("cannot query incident inference results") from error
         finally:
             connection.close()
 
+
+class SQLiteReviewDecisionRepository(_SQLiteRepositoryBase):
+    """SQLite implementation of append-only human review history."""
+
     def append(self, decision: ReviewDecision) -> ReviewDecision:
-        if not decision.log_id.strip():
-            raise ValueError("log_id must not be empty")
-        if not decision.decision_id.strip():
-            raise ValueError("decision_id must not be empty")
+        _validate_identifier(decision.decision_id, "decision_id")
+        _validate_identifier(decision.log_id, "log_id")
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -263,10 +275,10 @@ class SQLitePersistence:
             connection.execute("COMMIT")
             return decision
         except sqlite3.IntegrityError as error:
-            connection.execute("ROLLBACK")
+            self._rollback(connection)
             raise PersistenceConflictError("decision_id already exists") from error
         except sqlite3.Error as error:
-            connection.execute("ROLLBACK")
+            self._rollback(connection)
             raise PersistenceError("cannot append review decision") from error
         finally:
             connection.close()
@@ -277,6 +289,7 @@ class SQLitePersistence:
         *,
         page: PageRequest | None = None,
     ) -> Page[ReviewDecision]:
+        _validate_identifier(log_id, "log_id")
         return self._list_history(
             table="review_decisions",
             timestamp_column="decided_at",
@@ -292,11 +305,141 @@ class SQLitePersistence:
             ),
         )
 
-    def append_audit(self, event: AuditEvent) -> AuditEvent:
-        if not event.log_id.strip():
-            raise ValueError("log_id must not be empty")
-        if not event.event_id.strip():
-            raise ValueError("event_id must not be empty")
+    def _list_history(
+        self,
+        *,
+        table: str,
+        timestamp_column: str,
+        log_id: str,
+        page: PageRequest | None,
+        factory: Callable[[sqlite3.Row], object],
+    ) -> Page:
+        request = page or PageRequest()
+        connection = self._connect()
+        try:
+            total = int(
+                connection.execute(
+                    f"SELECT COUNT(*) FROM {table} WHERE log_id = ?",
+                    (log_id,),
+                ).fetchone()[0]
+            )
+            rows = connection.execute(
+                f"""
+                SELECT * FROM {table}
+                WHERE log_id = ?
+                ORDER BY {timestamp_column} ASC, {"decision_id" if table == "review_decisions" else "event_id"} ASC
+                LIMIT ? OFFSET ?
+                """,
+                (log_id, request.limit, request.offset),
+            ).fetchall()
+            return Page(
+                items=tuple(factory(row) for row in rows),
+                offset=request.offset,
+                limit=request.limit,
+                total=total,
+            )
+        except sqlite3.Error as error:
+            raise PersistenceError("cannot query review history") from error
+        finally:
+            connection.close()
+
+
+class SQLiteAuditEventRepository(_SQLiteRepositoryBase):
+    """SQLite implementation of append-only audit events."""
+
+    def append(self, event: AuditEvent) -> AuditEvent:
+        return self._append_one(event)
+
+    def append_many(self, events: Sequence[AuditEvent]) -> tuple[AuditEvent, ...]:
+        values = tuple(events)
+        if not values:
+            return ()
+        if len({event.event_id for event in values}) != len(values):
+            raise PersistenceConflictError("audit event IDs must be unique")
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            for event in values:
+                _validate_identifier(event.event_id, "event_id")
+                _validate_identifier(event.log_id, "log_id")
+                connection.execute(
+                    """
+                    INSERT INTO audit_events(
+                        event_id, log_id, event_type, actor_id, occurred_at, reason
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        event.event_id,
+                        event.log_id,
+                        event.event_type.value,
+                        event.actor_id,
+                        event.occurred_at.isoformat(),
+                        event.reason,
+                    ),
+                )
+            connection.execute("COMMIT")
+            return values
+        except sqlite3.IntegrityError as error:
+            self._rollback(connection)
+            raise PersistenceConflictError("audit event ID already exists") from error
+        except sqlite3.Error as error:
+            self._rollback(connection)
+            raise PersistenceError("cannot append audit events") from error
+        except ValueError:
+            self._rollback(connection)
+            raise
+        finally:
+            connection.close()
+
+    def list_for_incident(
+        self,
+        log_id: str,
+        *,
+        page: PageRequest | None = None,
+    ) -> Page[AuditEvent]:
+        _validate_identifier(log_id, "log_id")
+        request = page or PageRequest()
+        connection = self._connect()
+        try:
+            total = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM audit_events WHERE log_id = ?",
+                    (log_id,),
+                ).fetchone()[0]
+            )
+            rows = connection.execute(
+                """
+                SELECT * FROM audit_events
+                WHERE log_id = ?
+                ORDER BY occurred_at ASC, event_id ASC
+                LIMIT ? OFFSET ?
+                """,
+                (log_id, request.limit, request.offset),
+            ).fetchall()
+            return Page(
+                items=tuple(
+                    AuditEvent(
+                        event_id=row["event_id"],
+                        log_id=row["log_id"],
+                        event_type=row["event_type"],
+                        actor_id=row["actor_id"],
+                        occurred_at=_parse_datetime(row["occurred_at"]),
+                        reason=row["reason"],
+                    )
+                    for row in rows
+                ),
+                offset=request.offset,
+                limit=request.limit,
+                total=total,
+            )
+        except sqlite3.Error as error:
+            raise PersistenceError("cannot query audit history") from error
+        finally:
+            connection.close()
+
+    def _append_one(self, event: AuditEvent) -> AuditEvent:
+        _validate_identifier(event.event_id, "event_id")
+        _validate_identifier(event.log_id, "log_id")
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -318,136 +461,10 @@ class SQLitePersistence:
             connection.execute("COMMIT")
             return event
         except sqlite3.IntegrityError as error:
-            connection.execute("ROLLBACK")
+            self._rollback(connection)
             raise PersistenceConflictError("event_id already exists") from error
         except sqlite3.Error as error:
-            connection.execute("ROLLBACK")
+            self._rollback(connection)
             raise PersistenceError("cannot append audit event") from error
         finally:
             connection.close()
-
-    def append_many_audit(self, events: Sequence[AuditEvent]) -> tuple[AuditEvent, ...]:
-        values = tuple(events)
-        if not values:
-            return ()
-        if len({event.event_id for event in values}) != len(values):
-            raise PersistenceConflictError("audit event IDs must be unique")
-        connection = self._connect()
-        try:
-            connection.execute("BEGIN IMMEDIATE")
-            for event in values:
-                if not event.event_id.strip() or not event.log_id.strip():
-                    raise ValueError("audit event IDs and log IDs must not be empty")
-                connection.execute(
-                    """
-                    INSERT INTO audit_events(
-                        event_id, log_id, event_type, actor_id, occurred_at, reason
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        event.event_id,
-                        event.log_id,
-                        event.event_type.value,
-                        event.actor_id,
-                        event.occurred_at.isoformat(),
-                        event.reason,
-                    ),
-                )
-            connection.execute("COMMIT")
-            return values
-        except sqlite3.IntegrityError as error:
-            connection.execute("ROLLBACK")
-            raise PersistenceConflictError("audit event ID already exists") from error
-        except sqlite3.Error as error:
-            connection.execute("ROLLBACK")
-            raise PersistenceError("cannot append audit events") from error
-        finally:
-            connection.close()
-
-    def list_audit_for_incident(
-        self,
-        log_id: str,
-        *,
-        page: PageRequest | None = None,
-    ) -> Page[AuditEvent]:
-        return self._list_history(
-            table="audit_events",
-            timestamp_column="occurred_at",
-            log_id=log_id,
-            page=page,
-            factory=lambda row: AuditEvent(
-                event_id=row["event_id"],
-                log_id=row["log_id"],
-                event_type=row["event_type"],
-                actor_id=row["actor_id"],
-                occurred_at=_parse_datetime(row["occurred_at"]),
-                reason=row["reason"],
-            ),
-        )
-
-    def _list_history(
-        self,
-        *,
-        table: str,
-        timestamp_column: str,
-        log_id: str,
-        page: PageRequest | None,
-        factory,
-    ):
-        if not log_id.strip():
-            raise ValueError("log_id must not be empty")
-        request = page or PageRequest()
-        connection = self._connect()
-        try:
-            total = int(
-                connection.execute(
-                    f"SELECT COUNT(*) FROM {table} WHERE log_id = ?",
-                    (log_id,),
-                ).fetchone()[0]
-            )
-            rows = connection.execute(
-                f"""
-                SELECT * FROM {table}
-                WHERE log_id = ?
-                ORDER BY {timestamp_column} ASC, rowid ASC
-                LIMIT ? OFFSET ?
-                """,
-                (log_id, request.limit, request.offset),
-            ).fetchall()
-            return Page(
-                items=tuple(factory(row) for row in rows),
-                offset=request.offset,
-                limit=request.limit,
-                total=total,
-            )
-        except sqlite3.Error as error:
-            raise PersistenceError("cannot query persistence history") from error
-        finally:
-            connection.close()
-
-
-# Repository-shaped aliases/adapters keep application dependencies protocol-oriented.
-class SQLiteIncidentResultRepository:
-    def __init__(self, store: SQLitePersistence) -> None:
-        self._store = store
-
-    create_idempotent = SQLitePersistence.create_idempotent
-    get = SQLitePersistence.get
-    list = SQLitePersistence.list
-
-
-class SQLiteReviewDecisionRepository:
-    def __init__(self, store: SQLitePersistence) -> None:
-        self._store = store
-
-    append = SQLitePersistence.append
-    list_for_incident = SQLitePersistence.list_for_incident
-
-
-class SQLiteAuditEventRepository:
-    def __init__(self, store: SQLitePersistence) -> None:
-        self._store = store
-
-    append = SQLitePersistence.append_audit
-    append_many = SQLitePersistence.append_many_audit
-    list_for_incident = SQLitePersistence.list_audit_for_incident
