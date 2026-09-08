@@ -20,13 +20,16 @@ from riskforge.runtime.exceptions import (
     RuntimeStateError,
 )
 from riskforge.runtime.lifecycle import RuntimeManager
+from riskforge.runtime.workflow_adapters import PersistenceWorkflowReader, ReviewServiceAdapter
 
 __all__ = [
     "ComponentReadiness",
     "DependencyComposer",
     "LifecycleComponent",
     "LifecycleState",
+    "PersistenceWorkflowReader",
     "ReadinessState",
+    "ReviewServiceAdapter",
     "RuntimeAssembly",
     "RuntimeEnvironment",
     "RuntimeLifecycleError",
