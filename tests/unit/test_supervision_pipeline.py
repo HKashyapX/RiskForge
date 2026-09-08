@@ -41,6 +41,7 @@ def test_pipeline_produces_transport_neutral_rows() -> None:
     assert np.allclose(batch.probabilities.sum(axis=1), 1.0)
     assert rows[0]["log_id"] == "sif-1"
     assert rows[0]["lf_votes"] == {"keyword_sif": SIF_P, "selective": SIF_P}
+    assert rows[0]["lf_versions"] == {"keyword_sif": "1.0.0", "selective": "1.0.0"}
     assert rows[0]["p_sif_p"] > rows[0]["p_non_sif"]
     assert rows[-1]["lf_votes"]["selective"] == ABSTAIN
 

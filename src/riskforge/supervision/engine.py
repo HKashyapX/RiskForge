@@ -15,12 +15,15 @@ SIF_P = 1
 class LabelingFunction:
     """Named callable that emits ``ABSTAIN``, ``NON_SIF``, or ``SIF_P``."""
 
-    def __init__(self, name: str, f: Callable[[Any], int]) -> None:
+    def __init__(self, name: str, f: Callable[[Any], int], version: str = "1.0.0") -> None:
         if not name:
             raise ValueError("labeling-function name must not be empty")
+        if not version or not version.strip():
+            raise ValueError("labeling-function version must not be empty")
         if not callable(f):
             raise TypeError("labeling-function implementation must be callable")
         self.name = name
+        self.version = version
         self.f = f
 
     def __call__(self, record: Any) -> int:
@@ -28,10 +31,10 @@ class LabelingFunction:
 
 
 def labeling_function(
-    name: str | None = None,
+    name: str | None = None, *, version: str = "1.0.0"
 ) -> Callable[[Callable[[Any], int]], LabelingFunction]:
     def decorator(function: Callable[[Any], int]) -> LabelingFunction:
-        return LabelingFunction(name=name or function.__name__, f=function)
+        return LabelingFunction(name=name or function.__name__, f=function, version=version)
 
     return decorator
 
