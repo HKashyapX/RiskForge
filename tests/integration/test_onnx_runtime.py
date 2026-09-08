@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 
 import numpy as np
@@ -5,7 +6,8 @@ import onnx
 import onnxruntime as ort
 from onnx import TensorProto, helper
 
-from riskforge.core.contracts import AssetType, IncidentNormalizedRecord
+from riskforge.core.contracts import AssetType, IncidentNormalizedRecord, LifeSavingRule
+from riskforge.serving.artifact import sha256_file
 from riskforge.serving.engine import ONNXInferenceEngine
 
 
@@ -79,9 +81,28 @@ def _record(index: int) -> IncidentNormalizedRecord:
 
 def test_real_onnx_runtime_cpu_session_and_dynamic_batching(tmp_path) -> None:
     model_path = tmp_path / "dynamic_multitask.onnx"
+    manifest_path = tmp_path / "manifest.json"
     _write_dynamic_test_model(model_path)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "model_sha256": sha256_file(model_path),
+                "backbone": "riskforge-test-model",
+                "max_sequence_length": 8,
+                "quantization": "NONE",
+                "temperature": 1.0,
+                "input_names": ["input_ids", "attention_mask"],
+                "output_names": ["sif_logits", "iogp_logits"],
+                "iogp_rule_order": [rule.value for rule in LifeSavingRule],
+            }
+        ),
+        encoding="utf-8",
+    )
 
-    engine = ONNXInferenceEngine(model_path, max_batch_size=2)
+    engine = ONNXInferenceEngine.from_artifact(
+        model_path, manifest_path, max_batch_size=2
+    )
 
     options = engine.session.get_session_options()
     assert options.intra_op_num_threads == 4
