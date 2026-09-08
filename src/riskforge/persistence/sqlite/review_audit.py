@@ -5,8 +5,12 @@ from __future__ import annotations
 import sqlite3
 
 from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
-from riskforge.persistence.models import AuditEvent, ReviewDecision
-from riskforge.persistence.sqlite.repository import _SQLiteRepositoryBase, _iso_timestamp, _validate_identifier
+from riskforge.persistence.models import AuditEvent, AuditEventType, ReviewDecision
+from riskforge.persistence.sqlite.repository import (
+    _SQLiteRepositoryBase,
+    _iso_timestamp,
+    _validate_identifier,
+)
 
 
 class SQLiteReviewAuditWriter(_SQLiteRepositoryBase):
@@ -17,14 +21,20 @@ class SQLiteReviewAuditWriter(_SQLiteRepositoryBase):
     ) -> tuple[ReviewDecision, AuditEvent]:
         _validate_identifier(decision.decision_id, "decision_id")
         _validate_identifier(decision.log_id, "log_id")
+        _validate_identifier(decision.reviewer_id, "reviewer_id")
         _validate_identifier(event.event_id, "event_id")
         _validate_identifier(event.log_id, "log_id")
+        _validate_identifier(event.actor_id, "actor_id")
         if event.log_id != decision.log_id:
             raise ValueError("review and audit log_id values must match")
         if event.reason != decision.reason:
             raise ValueError("review and audit reasons must match")
         if event.occurred_at != decision.decided_at:
             raise ValueError("review and audit timestamps must match")
+        if event.actor_id != decision.reviewer_id:
+            raise ValueError("audit actor must match reviewer identity")
+        if event.event_type is not AuditEventType.REVIEW_DECISION_RECORDED:
+            raise ValueError("audit event must record a review decision")
 
         connection = self._connect()
         try:
@@ -66,7 +76,9 @@ class SQLiteReviewAuditWriter(_SQLiteRepositoryBase):
             raise PersistenceConflictError("review or audit record already exists") from error
         except sqlite3.Error as error:
             self._rollback(connection)
-            raise PersistenceError("cannot atomically persist review decision and audit event") from error
+            raise PersistenceError(
+                "cannot atomically persist review decision and audit event"
+            ) from error
         except ValueError:
             self._rollback(connection)
             raise
