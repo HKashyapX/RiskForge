@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 
@@ -17,11 +18,6 @@ def main() -> None:
             continue
         if any(part in SKIP_DIRECTORIES for part in path.relative_to(root).parts):
             continue
-        for child in path.rglob("*"):
-            if child.is_symlink():
-                continue
-        import shutil
-
         shutil.rmtree(path)
         removed += 1
         print(f"Removed {path.relative_to(root)}")
