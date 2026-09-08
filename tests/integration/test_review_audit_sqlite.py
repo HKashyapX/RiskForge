@@ -17,7 +17,11 @@ from riskforge.persistence.models import (
     ReviewDecision,
     StoredIncidentResult,
 )
-from riskforge.persistence.sqlite.repository import SQLiteIncidentResultRepository
+from riskforge.persistence.sqlite.repository import (
+    SQLiteAuditEventRepository,
+    SQLiteIncidentResultRepository,
+    SQLiteReviewDecisionRepository,
+)
 from riskforge.persistence.sqlite.review_audit import SQLiteReviewAuditWriter
 from riskforge.review.protocols import ReviewAuditWriter
 from riskforge.review.service import ReviewService
@@ -47,36 +51,41 @@ def _stored() -> StoredIncidentResult:
     return StoredIncidentResult(incident=incident, result=result)
 
 
-def _decision() -> ReviewDecision:
+def _decision(
+    decision_id: str = "D1",
+    action: ReviewAction = ReviewAction.CONFIRM,
+    reason: str = "Confirmed.",
+) -> ReviewDecision:
     return ReviewDecision(
-        decision_id="D1",
+        decision_id=decision_id,
         log_id="LOG_1",
-        action=ReviewAction.CONFIRM,
+        action=action,
         reviewer_id="reviewer-1",
         decided_at=NOW,
-        reason="Confirmed.",
+        reason=reason,
     )
 
 
-def _event() -> AuditEvent:
+def _event(event_id: str = "review:D1", reason: str = "Confirmed.") -> AuditEvent:
     return AuditEvent(
-        event_id="review:D1",
+        event_id=event_id,
         log_id="LOG_1",
         event_type=AuditEventType.REVIEW_DECISION_RECORDED,
         actor_id="reviewer-1",
         occurred_at=NOW,
-        reason="Confirmed.",
+        reason=reason,
     )
+
+
+class AllowAll:
+    def can_decide(self, reviewer_id: str, log_id: str, action: ReviewAction) -> bool:
+        return True
 
 
 def test_atomic_review_writer_implements_protocol_and_survives_restart(tmp_path) -> None:
     db_path = tmp_path / "riskforge.db"
     assert isinstance(SQLiteReviewAuditWriter(db_path), ReviewAuditWriter)
     SQLiteIncidentResultRepository(db_path).create_idempotent(_stored())
-
-    class AllowAll:
-        def can_decide(self, reviewer_id, log_id, action):
-            return True
 
     service = ReviewService(
         SQLiteIncidentResultRepository(db_path),
@@ -92,36 +101,42 @@ def test_atomic_review_writer_implements_protocol_and_survives_restart(tmp_path)
         decided_at=NOW,
     )
     assert decision == _decision()
-    assert SQLiteReviewAuditWriter(db_path) is not None
 
-    restarted_db = tmp_path / "riskforge.db"
-    from riskforge.persistence.sqlite.repository import SQLiteReviewDecisionRepository
-    from riskforge.persistence.sqlite.repository import SQLiteAuditEventRepository
-
-    decisions = SQLiteReviewDecisionRepository(restarted_db).list_for_incident("LOG_1")
-    events = SQLiteAuditEventRepository(restarted_db).list_for_incident("LOG_1")
+    decisions = SQLiteReviewDecisionRepository(db_path).list_for_incident("LOG_1")
+    events = SQLiteAuditEventRepository(db_path).list_for_incident("LOG_1")
     assert decisions.items == (_decision(),)
     assert events.items == (_event(),)
 
 
-def test_atomic_review_writer_rolls_back_when_audit_conflicts(tmp_path) -> None:
+def test_atomic_review_writer_rolls_back_both_records_on_conflict(tmp_path) -> None:
     db_path = tmp_path / "riskforge.db"
     writer = SQLiteReviewAuditWriter(db_path)
     writer.append_review_atomically(_decision(), _event())
     with pytest.raises(PersistenceConflictError):
         writer.append_review_atomically(
-            ReviewDecision(
-                decision_id="D2",
-                log_id="LOG_1",
-                action=ReviewAction.DISMISS,
-                reviewer_id="reviewer-1",
-                decided_at=NOW,
-                reason="Dismissed.",
-            ),
+            _decision("D2", ReviewAction.DISMISS, "Dismissed."),
             _event(),
         )
 
-    assert SQLiteIncidentResultRepository(db_path).get("LOG_1") is None
-    from riskforge.persistence.sqlite.repository import SQLiteReviewDecisionRepository
+    decisions = SQLiteReviewDecisionRepository(db_path).list_for_incident("LOG_1")
+    events = SQLiteAuditEventRepository(db_path).list_for_incident("LOG_1")
+    assert [item.decision_id for item in decisions.items] == ["D1"]
+    assert [item.event_id for item in events.items] == ["review:D1"]
 
-    assert SQLiteReviewDecisionRepository(db_path).list_for_incident("LOG_1").items == (_decision(),)
+
+def test_review_service_persists_original_automated_result_unchanged(tmp_path) -> None:
+    db_path = tmp_path / "riskforge.db"
+    incident_repo = SQLiteIncidentResultRepository(db_path)
+    original = _stored()
+    incident_repo.create_idempotent(original)
+
+    ReviewService(incident_repo, SQLiteReviewAuditWriter(db_path), AllowAll()).decide(
+        log_id="LOG_1",
+        decision_id="D1",
+        reviewer_id="reviewer-1",
+        action=ReviewAction.ESCALATE,
+        reason="Escalated after review.",
+        decided_at=NOW,
+    )
+
+    assert incident_repo.get("LOG_1") == original
