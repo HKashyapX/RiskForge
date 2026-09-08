@@ -23,7 +23,12 @@ _FAILURE_RE = re.compile(
 )
 _NEGATED_FAILURE_RE = re.compile(
     r"\b(?:no|not|never|without|zero|nil)\b(?:\W+\w+){0,3}\W+"
-    r"(?:leak|failure|breach|bypass)\b",
+    r"(?:bypass(?:ed)?|defeat(?:ed)?|disable[ds]?|fail(?:ed|ure)?|"
+    r"leak(?:ed|ing)?|breach(?:ed)?|missing|removed)\b",
+    re.IGNORECASE,
+)
+_CLAUSE_BOUNDARY_RE = re.compile(
+    r"(?:[.!?;\n]+|\b(?:but|however|although|though|yet|whereas)\b)",
     re.IGNORECASE,
 )
 _HIGH_ENERGY_RE = re.compile(
@@ -36,6 +41,12 @@ _HEIGHT_RE = re.compile(r"\b(\d+(?:\.\d+)?)\s*(?:m|metre|meter)s?\b", re.IGNOREC
 _H2S_RE = re.compile(r"\b(?:h2s|hydrogen\s+sulfide)\D{0,12}(\d+(?:\.\d+)?)\s*ppm\b", re.IGNORECASE)
 _WORKER_RE = re.compile(
     r"\b(?:worker|personnel|person|crew|driller|derrickman|operator|roustabout|"
+    r"roughneck|technician|contractor|employee)\b",
+    re.IGNORECASE,
+)
+_NEGATED_WORKER_RE = re.compile(
+    r"\b(?:no|not|never|without|zero|nil)\b(?:\W+\w+){0,3}\W+"
+    r"(?:worker|personnel|person|crew|driller|derrickman|operator|roustabout|"
     r"roughneck|technician|contractor|employee)\b",
     re.IGNORECASE,
 )
@@ -78,18 +89,35 @@ def _triad(record: IncidentNormalizedRecord) -> OperationalTriad:
     )
 
 
+def _has_unnegated_failure(narrative: str) -> bool:
+    for clause in _CLAUSE_BOUNDARY_RE.split(narrative):
+        negated_spans = [match.span() for match in _NEGATED_FAILURE_RE.finditer(clause)]
+        for failure in _FAILURE_RE.finditer(clause):
+            if not any(start <= failure.start() < stop for start, stop in negated_spans):
+                return True
+    return False
+
+
+def _has_worker_exposure(narrative: str) -> bool:
+    for clause in _CLAUSE_BOUNDARY_RE.split(narrative):
+        negated_spans = [match.span() for match in _NEGATED_WORKER_RE.finditer(clause)]
+        for worker in _WORKER_RE.finditer(clause):
+            if not any(start <= worker.start() < stop for start, stop in negated_spans):
+                return True
+    return False
+
+
 def _barrier_override(record: IncidentNormalizedRecord, triad: OperationalTriad) -> bool:
     if triad.failed_barrier is None:
         return False
     narrative = record.raw_narrative
-    failure = _FAILURE_RE.search(narrative)
-    if failure is None or _NEGATED_FAILURE_RE.search(narrative):
+    if not _has_unnegated_failure(narrative):
         return False
     pressure = any(float(match.group(1)) >= 150.0 for match in _PRESSURE_RE.finditer(narrative))
     height = any(float(match.group(1)) >= 1.8 for match in _HEIGHT_RE.finditer(narrative))
     h2s = any(float(match.group(1)) >= 10.0 for match in _H2S_RE.finditer(narrative))
     high_energy = bool(_HIGH_ENERGY_RE.search(narrative) or pressure or height or h2s)
-    return high_energy and _WORKER_RE.search(narrative) is not None
+    return high_energy and _has_worker_exposure(narrative)
 
 
 class InferencePostprocessor:
