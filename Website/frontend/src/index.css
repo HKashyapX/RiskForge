@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  /* Typography */
+  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Enterprise Light Theme — Background */
+  --color-background:    #f8fafc;
+  --color-surface:       #ffffff;
+  --color-surface-hover: #f1f5f9;
+
+  /* Text */
+  --color-text-primary:   #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #94a3b8;
+
+  /* Border */
+  --color-border: #e2e8f0;
+
+  /* Brand — Amber/Orange accent, used sparingly */
+  --color-brand:       #ea580c;
+  --color-brand-light: #fff7ed;
+  --color-brand-hover: #c2410c;
+
+  /* Semantic: Safe (Green) */
+  --color-safe:    #16a34a;
+  --color-safe-bg: #f0fdf4;
+  --color-safe-border: #bbf7d0;
+
+  /* Semantic: Warning / Attention (Amber) */
+  --color-warning:    #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+
+  /* Semantic: Critical (Red) */
+  --color-critical:    #dc2626;
+  --color-critical-bg: #fef2f2;
+  --color-critical-border: #fecaca;
+
+  /* Semantic: Info (Blue) */
+  --color-info:    #2563eb;
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
+}
+
+/* ── Base Styles ─────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-sans);
+  line-height: 1.6;
+}
+
+/* ── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Focus Visible ───────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* ── Utility: font-mono ──────────────────────────── */
+.font-mono { font-family: var(--font-family-mono) !important; }

@@ -1,0 +1,49 @@
+{
+  "status": "passed",
+  "dataset": {
+    "clean_incidents": 122285,
+    "tagged_reference_records": 1000,
+    "tagged1000_id_overlap_with_osha_xlsx": 1000
+  },
+  "duplicate_removal": {
+    "exact_duplicates_removed": 26,
+    "near_duplicates_removed": 3,
+    "total_duplicates_removed": 29
+  },
+  "splits": {
+    "sif_training.jsonl": 799,
+    "sif_validation.jsonl": 100,
+    "sif_test.jsonl": 101,
+    "sif_eval.jsonl": 201
+  },
+  "checks": {
+    "source_schema_mapping": "passed",
+    "record_validation": "passed",
+    "duplicate_check": "passed",
+    "pii_sanitization": "completed",
+    "text_normalization": "completed",
+    "terminology_normalization": "completed",
+    "severity_labeling": "passed",
+    "hazard_taxonomy_mapping": "passed",
+    "label_provenance": "passed",
+    "jsonl_parse_validation": "passed",
+    "dataset_split_validation": "passed",
+    "parquet_export": "completed"
+  },
+  "outputs": {
+    "clean_incidents.parquet": "created",
+    "clean_incidents.jsonl": "created",
+    "sif_training.jsonl": "created",
+    "sif_validation.jsonl": "created",
+    "sif_test.jsonl": "created",
+    "sif_eval.jsonl": "created",
+    "label_report.csv": "created"
+  },
+  "audit_principles": {
+    "actual_severity_separate_from_sif_potential": true,
+    "gold_labels_separate_from_weak_labels": true,
+    "original_narrative_preserved_separately": true,
+    "safety_relevant_context_preserved": true,
+    "direct_pii_redaction_applied": true
+  }
+}

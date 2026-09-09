@@ -1,0 +1,4 @@
+duplicate_type,count_removed,method,scope,status,notes
+exact,26,Exact duplicate row detection,Full OSHA corpus,completed,"Identical records detected using normalized record content and removed."
+near_duplicate,3,Conservative near-duplicate detection,Full OSHA corpus,completed,"Highly similar records identified using conservative matching to avoid incorrectly merging distinct incidents."
+total,29,Combined duplicate-removal process,Full OSHA corpus,completed,"29 duplicate records removed in total; 122,285 unique incident records retained."

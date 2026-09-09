@@ -1,0 +1,11 @@
+rule,action,status,applies_to,preserve,notes
+person_name,redact_or_generalize,completed,narrative_text,"worker role and safety context","Personal names are replaced with generic references such as employee, worker, supervisor, or individual."
+phone_number,redact,completed,narrative_text,"surrounding incident context","Telephone numbers are removed."
+email_address,redact,completed,narrative_text,"surrounding incident context","Email addresses are removed."
+personal_identifier,redact_or_generalize,completed,narrative_text_and_metadata,"safety-relevant information","Employee IDs, license numbers, medical record numbers, and similar direct identifiers are removed or generalized."
+company_name,generalize,completed,narrative_text_and_metadata,"industry, worksite type, activity, equipment","Employer/company names are generalized where they could identify the organization."
+street_address,remove_or_generalize,completed,narrative_text_and_metadata,"city, state, worksite type","Precise street-level location information is removed while useful geographic or site-type context is retained."
+building_or_unit_identifier,remove_or_generalize,completed,narrative_text,"worksite context","Specific building, room, unit, or facility identifiers are generalized when unnecessarily identifying."
+equipment_serial_number,remove,completed,narrative_text,"equipment type and model where useful","Serial numbers and other unique equipment identifiers are removed."
+vehicle_identifier,remove_or_generalize,completed,narrative_text,"vehicle type and safety mechanism","License plates, fleet IDs, and unique vehicle identifiers are removed."
+url_or_social_identifier,redact,completed,narrative_text,"surrounding incident context","URLs or social/contact identifiers that could identify individuals or organizations are removed."
