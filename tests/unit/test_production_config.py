@@ -233,3 +233,14 @@ class TestEnvironmentVariables:
         from riskforge.persistence.postgres.connection import PostgresConfig
         cfg = PostgresConfig()
         assert cfg.port == 5432
+
+    def test_migration_dsn_preserves_database_password(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("PGPASSWORD", "migration-test-secret")
+        from riskforge.persistence.postgres.migrate import _dsn_from_env
+
+        dsn = _dsn_from_env()
+
+        assert "password=migration-test-secret" in dsn
+        assert "password=***" not in dsn
