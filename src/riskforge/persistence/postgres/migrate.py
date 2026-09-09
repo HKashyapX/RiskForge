@@ -180,7 +180,10 @@ def _dsn_from_env() -> str:
     ]
     password = os.environ.get("PGPASSWORD", "")
     if password:
-        parts.append("password=***")  # mask password in DSN
+        # This DSN is passed directly to psycopg and is never logged.  Redaction
+        # belongs at a logging boundary; replacing the credential here makes
+        # every password-protected migration fail authentication.
+        parts.append(f"password={password}")
     return " ".join(parts)
 
 

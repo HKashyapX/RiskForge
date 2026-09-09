@@ -283,7 +283,10 @@ def _pg_pool() -> Any:
         min_pool_size=1,
         max_pool_size=2,
     )
-    run_migrations(dsn=config.dsn())
+    # ``PostgresConfig.dsn()`` is intentionally redacted for display.  Let the
+    # migration runner read the same libpq environment variables as the config
+    # instead of passing a redacted credential to psycopg.
+    run_migrations()
     pool = PostgresConnectionPool(config=config)
     # Truncate all tables to ensure test isolation
     conn = pool.getconn()
