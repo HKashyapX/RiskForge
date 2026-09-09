@@ -1,5 +1,11 @@
 """Persistence interfaces and value objects."""
 
+from riskforge.persistence.exceptions import (
+    PersistenceConflictError,
+    PersistenceConnectionError,
+    PersistenceError,
+    PersistenceTimeoutError,
+)
 from riskforge.persistence.models import (
     AuditEvent,
     AuditEventType,
@@ -24,6 +30,10 @@ __all__ = [
     "IncidentResultRepository",
     "Page",
     "PageRequest",
+    "PersistenceConflictError",
+    "PersistenceConnectionError",
+    "PersistenceError",
+    "PersistenceTimeoutError",
     "ReviewAction",
     "ReviewDecision",
     "ReviewDecisionRepository",

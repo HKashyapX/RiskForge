@@ -31,11 +31,14 @@ Design
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import sys
 from pathlib import Path
 
 from riskforge.persistence.exceptions import PersistenceError
+
+logger = logging.getLogger("riskforge.persistence.postgres.migrate")
 
 _MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 _TRACKING_TABLE = "schema_migrations"
@@ -125,6 +128,7 @@ def run_migrations(*, dsn: str | None = None) -> int:
     if not migrations:
         return 0
 
+    logger.info("running migrations", extra={"pending": len(migrations)})
     applied_count = 0
     try:
         with psycopg.connect(effective_dsn) as conn:
@@ -154,6 +158,7 @@ def run_migrations(*, dsn: str | None = None) -> int:
                     ) from exc
 
                 applied_count += 1
+                logger.info("migration applied", extra={"version": version})
 
     except MigrationError:
         raise
@@ -175,7 +180,7 @@ def _dsn_from_env() -> str:
     ]
     password = os.environ.get("PGPASSWORD", "")
     if password:
-        parts.append(f"password={password}")
+        parts.append("password=***")  # mask password in DSN
     return " ".join(parts)
 
 
@@ -187,9 +192,9 @@ def main() -> None:
     """CLI entry point: ``python -m riskforge.persistence.postgres.migrate``."""
     try:
         count = run_migrations()
-        print(f"migrations applied: {count}")
+        logger.info("migrations applied", extra={"count": count})
     except MigrationError as exc:
-        print(f"migration failed: {exc}", file=sys.stderr)
+        logger.error("migration failed", extra={"error": str(exc)})
         sys.exit(1)
 
 

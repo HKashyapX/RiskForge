@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -25,6 +28,13 @@ from riskforge.serving.exceptions import (
 )
 from riskforge.serving.postprocessor import InferencePostprocessor
 
+logger = logging.getLogger("riskforge.serving.engine")
+
+# Default inference timeout in seconds
+_DEFAULT_INFERENCE_TIMEOUT_S = 30.0
+# Number of consecutive failures before marking engine degraded
+_DEGRADED_THRESHOLD = 5
+
 
 class ONNXInferenceEngine:
     @classmethod
@@ -35,7 +45,9 @@ class ONNXInferenceEngine:
         *,
         max_batch_size: int = 32,
         warmup: bool = True,
+        inference_timeout_s: float = _DEFAULT_INFERENCE_TIMEOUT_S,
     ) -> ONNXInferenceEngine:
+        logger.info("loading model artifact", extra={"model_path": str(model_path)})
         try:
             manifest = ModelArtifactManifest.load(manifest_path)
             validate_model_checksum(model_path, manifest.model_sha256)
@@ -45,6 +57,7 @@ class ONNXInferenceEngine:
                     calibrator=TemperatureScaler(manifest.temperature)
                 ),
                 max_batch_size=max_batch_size,
+                inference_timeout_s=inference_timeout_s,
             )
             manifest.validate_session(engine.input_names, engine.output_names)
         except ServingError:
@@ -58,6 +71,16 @@ class ONNXInferenceEngine:
                 raise
             except Exception as error:
                 raise WarmupError(f"model warm-up failed: {error}") from error
+        logger.info(
+            "model artifact loaded successfully",
+            extra={
+                "model_path": str(model_path),
+                "temperature": manifest.temperature,
+                "max_batch_size": max_batch_size,
+                "input_names": list(engine.input_names),
+                "output_names": list(engine.output_names),
+            },
+        )
         return engine
 
     def __init__(
@@ -67,12 +90,16 @@ class ONNXInferenceEngine:
         postprocessor: InferencePostprocessor | None = None,
         max_batch_size: int = 32,
         session: Any | None = None,
+        inference_timeout_s: float = _DEFAULT_INFERENCE_TIMEOUT_S,
     ) -> None:
         if max_batch_size < 1:
             raise ValueError("max_batch_size must be positive")
         self.model_path = Path(model_path)
         self.max_batch_size = max_batch_size
+        self.inference_timeout_s = inference_timeout_s
         self.postprocessor = postprocessor or InferencePostprocessor()
+        self._consecutive_failures = 0
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="onnx-infer")
         if session is None:
             if not self.model_path.is_file():
                 raise ArtifactLoadingError(f"ONNX model not found: {self.model_path}")
@@ -102,6 +129,11 @@ class ONNXInferenceEngine:
         if len(self.output_names) < 2:
             raise InvalidOutputError("the ONNX model must expose SIF and IOGP outputs")
 
+    @property
+    def is_degraded(self) -> bool:
+        """True when consecutive failures exceed the degradation threshold."""
+        return self._consecutive_failures >= _DEGRADED_THRESHOLD
+
     def warmup(self, sequence_length: int = 8) -> None:
         if sequence_length < 1:
             raise ValueError("sequence_length must be positive")
@@ -110,6 +142,7 @@ class ONNXInferenceEngine:
         try:
             outputs = self.session.run(None, feed)
             self._split_outputs(outputs)
+            logger.info("model warmup completed", extra={"sequence_length": sequence_length})
         except Exception as error:
             raise WarmupError(f"model warm-up failed: {error}") from error
 
@@ -177,10 +210,29 @@ class ONNXInferenceEngine:
         feed = self._input_feed(input_ids, attention_mask, token_type_ids)
         started = perf_counter()
         try:
-            outputs = self.session.run(None, feed)
+            # Run inference with timeout protection
+            future = self._executor.submit(self.session.run, None, feed)
+            try:
+                outputs = future.result(timeout=self.inference_timeout_s)
+            except FuturesTimeoutError as error:
+                self._consecutive_failures += 1
+                raise InferenceFailureError(
+                    f"ONNX Runtime inference timed out after {self.inference_timeout_s}s"
+                ) from error
+        except InferenceFailureError:
+            raise
         except Exception as error:
+            self._consecutive_failures += 1
             raise InferenceFailureError(f"ONNX Runtime inference failed: {error}") from error
         latency_ms = (perf_counter() - started) * 1000.0
+        self._consecutive_failures = 0  # reset on success
+        logger.debug(
+            "inference completed",
+            extra={
+                "batch_size": len(records),
+                "latency_ms": round(latency_ms, 2),
+            },
+        )
         sif_logits, iogp_logits = self._split_outputs(outputs)
         try:
             return self.postprocessor.process_batch(

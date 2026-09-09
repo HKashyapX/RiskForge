@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import FastAPI, Header, Path, Query, Request
+from fastapi import Depends, FastAPI, Header, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from starlette.responses import Response
 
 from riskforge.api.dependencies import ReadinessProvider, require_principal
 from riskforge.api.errors import ErrorCode, TranslatedError, translate_application_error
@@ -42,6 +44,9 @@ from riskforge.authentication.exceptions import (
 from riskforge.authentication.principal import Principal
 from riskforge.authentication.protocols import AuthenticationService
 from riskforge.core.contracts import AssetType, RoutingBucket
+from riskforge.observability.middleware import RequestMetricsMiddleware
+
+logger = logging.getLogger("riskforge.api.app")
 
 CorrelationHeader = Annotated[
     str,
@@ -89,6 +94,8 @@ def create_app(
     application: BackendApplication,
     readiness: ReadinessProvider,
     auth_service: AuthenticationService | None = None,
+    enable_metrics: bool = True,
+    cors_origins: list[str] | None = None,
 ) -> FastAPI:
     """Create the HTTP shell without constructing concrete infrastructure.
 
@@ -103,8 +110,57 @@ def create_app(
         declare ``Depends(require_principal)`` will extract and verify
         credentials from the ``Authorization: Bearer <token>`` header.
         When ``None``, no routes require authentication.
+    enable_metrics:
+        When True (default), mount a ``/metrics`` endpoint for Prometheus
+        scraping and add request instrumentation middleware.
+    cors_origins:
+        List of allowed CORS origins.  When ``None``, reads from the
+        ``RISKFORGE_CORS_ORIGINS`` environment variable (comma-separated).
+        Set to ``["*"]`` for development.  Pass ``[]`` to disable CORS.
     """
+    import os
+
+    from fastapi.middleware.cors import CORSMiddleware
+
     app = FastAPI(title="RiskForge API", version="1.0.0")
+
+    # ── Security headers middleware ────────────────────────────────────
+    @app.middleware("http")
+    async def _security_headers(request: Request, call_next: Any) -> Response:  # type: ignore[type-arg]
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "0"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    # ── CORS configuration ────────────────────────────────────────────
+    if cors_origins is None:
+        raw = os.environ.get("RISKFORGE_CORS_ORIGINS", "*")
+        cors_origins = [o.strip() for o in raw.split(",") if o.strip()]
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        logger.info("cors configured", extra={"origins": cors_origins})
+
+    # Add request-level metrics middleware
+    app.add_middleware(RequestMetricsMiddleware)
+
+    # Mount Prometheus /metrics endpoint
+    if enable_metrics:
+        try:
+            from prometheus_client import make_asgi_app
+
+            metrics_app = make_asgi_app()
+            app.mount("/metrics", metrics_app)
+        except ImportError:
+            logger.warning("prometheus-client not installed; /metrics endpoint disabled")
 
     # Wire the authentication dependency when a service is provided.
     if auth_service is not None:
@@ -116,6 +172,14 @@ def create_app(
     @app.exception_handler(_ApiFailure)
     async def handle_api_failure(_request: Request, error: _ApiFailure) -> JSONResponse:
         payload = _error_response(error.correlation_id, error.translated)
+        logger.error(
+            "api failure",
+            extra={
+                "error_code": error.translated.code.value,
+                "status_code": error.translated.status_code,
+                "correlation_id": error.correlation_id,
+            },
+        )
         return JSONResponse(
             status_code=error.translated.status_code,
             content=payload.model_dump(mode="json"),
@@ -139,8 +203,27 @@ def create_app(
         _request: Request, error: AuthenticationError
     ) -> JSONResponse:
         translated = translate_application_error(error)
+        logger.warning(
+            "authentication error",
+            extra={"error_code": translated.code.value},
+        )
         payload = _error_response("unavailable", translated)
         return JSONResponse(status_code=401, content=payload.model_dump(mode="json"))
+
+    @app.exception_handler(Exception)
+    async def handle_unhandled_exception(
+        _request: Request, error: Exception
+    ) -> JSONResponse:
+        """Global handler for unhandled exceptions — returns safe 500 JSON."""
+        logger.error("unhandled exception", exc_info=error)
+        translated = TranslatedError(
+            status_code=500,
+            code=ErrorCode.INTERNAL_ERROR,
+            message="internal server error",
+            retryable=False,
+        )
+        payload = _error_response("unavailable", translated)
+        return JSONResponse(status_code=500, content=payload.model_dump(mode="json"))
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -166,6 +249,13 @@ def create_app(
 
     @app.post("/v1/inference", response_model=InferenceResponse)
     def infer(request: InferenceRequest) -> InferenceResponse:
+        logger.debug(
+            "inference request",
+            extra={
+                "correlation_id": request.correlation_id,
+                "endpoint": "/v1/inference",
+            },
+        )
         try:
             result = application.process_incident(request.incident)
         except Exception as error:
@@ -174,6 +264,14 @@ def create_app(
 
     @app.post("/v1/inference/batch", response_model=BatchInferenceResponse)
     def infer_batch(request: BatchInferenceRequest) -> BatchInferenceResponse:
+        logger.debug(
+            "batch inference request",
+            extra={
+                "correlation_id": request.correlation_id,
+                "endpoint": "/v1/inference/batch",
+                "batch_size": len(request.incidents),
+            },
+        )
         try:
             results = tuple(application.process_batch(request.incidents))
         except Exception as error:
@@ -184,6 +282,10 @@ def create_app(
     def asset_summary(
         asset_id: AssetIdPath, correlation_id: CorrelationHeader
     ) -> AssetSummaryResponse:
+        logger.debug(
+            "asset summary request",
+            extra={"correlation_id": correlation_id, "asset_id": asset_id},
+        )
         try:
             summary = application.get_asset_summary(asset_id)
         except Exception as error:
@@ -264,9 +366,17 @@ def create_app(
     def review_decision(
         log_id: LogIdPath,
         body: ReviewDecisionRequest,
-        http_request: Request,
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> ReviewDecisionResponse:
-        principal = _resolve_principal(auth_service, http_request, body.correlation_id)
+        logger.info(
+            "review decision request",
+            extra={
+                "correlation_id": body.correlation_id,
+                "log_id": log_id,
+                "reviewer_id": principal.subject_id,
+                "action": body.action,
+            },
+        )
         command = ReviewCommand(
             log_id=log_id,
             decision_id=body.decision_id,
@@ -281,26 +391,6 @@ def create_app(
         return ReviewDecisionResponse(correlation_id=body.correlation_id, decision=decision)
 
     return app
-
-
-def _resolve_principal(
-    auth_service: AuthenticationService | None,
-    request: Request,
-    correlation_id: str,
-) -> Principal:
-    """Resolve an authenticated principal for routes that require identity."""
-    if auth_service is None:
-        translated = TranslatedError(
-            503,
-            ErrorCode.AUTHENTICATION_UNAVAILABLE,
-            "authentication service unavailable",
-            True,
-        )
-        raise _ApiFailure(correlation_id, translated)
-    try:
-        return _extract_principal(auth_service, request)
-    except Exception as error:
-        raise _ApiFailure(correlation_id, translate_application_error(error)) from error
 
 
 def _invalid_request() -> TranslatedError:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
@@ -16,6 +17,8 @@ from riskforge.persistence.models import (
     StoredIncidentResult,
 )
 from riskforge.persistence.postgres.connection import PostgresConnectionPool
+
+logger = logging.getLogger("riskforge.persistence.postgres.repository")
 
 # ---------------------------------------------------------------------------
 # Helpers (shared with SQLite where possible, but kept self-contained)
@@ -48,6 +51,21 @@ def _validate_identifier(value: str, field_name: str) -> None:
     """Reject blank identifiers at the repository boundary."""
     if not value.strip():
         raise ValueError(f"{field_name} must not be empty")
+
+
+def _is_unique_violation(exc: Exception) -> bool:
+    """Check if an exception is a PostgreSQL unique constraint violation.
+
+    Uses ``psycopg.errors.UniqueViolation`` when available, falling back
+    to string matching for compatibility with older psycopg versions.
+    """
+    try:
+        from psycopg.errors import UniqueViolation
+
+        return isinstance(exc, UniqueViolation)
+    except ImportError:
+        # Fallback: check the string representation (legacy behavior)
+        return "duplicate key" in str(exc)
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +118,7 @@ class PostgresIncidentResultRepository(_PostgresRepositoryBase):
                         ),
                     )
                 except Exception as insert_exc:
-                    if "duplicate key" not in str(insert_exc):
+                    if not _is_unique_violation(insert_exc):
                         raise
                     # Race: another thread inserted between our SELECT and INSERT.
                     # Re-read and compare content.
@@ -274,7 +292,7 @@ class PostgresReviewDecisionRepository(_PostgresRepositoryBase):
             return decision
         except Exception as exc:
             conn.rollback()
-            if "duplicate key" in str(exc):
+            if _is_unique_violation(exc):
                 raise PersistenceConflictError(
                     "decision_id already exists"
                 ) from exc
@@ -364,7 +382,7 @@ class PostgresAuditEventRepository(_PostgresRepositoryBase):
             return event
         except Exception as exc:
             conn.rollback()
-            if "duplicate key" in str(exc):
+            if _is_unique_violation(exc):
                 raise PersistenceConflictError("event_id already exists") from exc
             raise PersistenceError("cannot append audit event") from exc
         finally:
@@ -402,7 +420,7 @@ class PostgresAuditEventRepository(_PostgresRepositoryBase):
         except PersistenceConflictError:
             raise
         except Exception as exc:
-            if "duplicate key" in str(exc):
+            if _is_unique_violation(exc):
                 raise PersistenceConflictError(
                     "audit event ID already exists"
                 ) from exc
@@ -522,7 +540,7 @@ class PostgresReviewAuditWriter(_PostgresRepositoryBase):
                 )
             return decision, event
         except Exception as exc:
-            if "duplicate key" in str(exc):
+            if _is_unique_violation(exc):
                 raise PersistenceConflictError(
                     "review or audit record already exists"
                 ) from exc

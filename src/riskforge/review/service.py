@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 
 from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
@@ -18,6 +19,8 @@ from riskforge.review.exceptions import (
     ReviewPersistenceError,
 )
 from riskforge.review.protocols import IncidentResultReader, ReviewAuditWriter, ReviewerAuthorizer
+
+logger = logging.getLogger("riskforge.review.service")
 
 
 class ReviewService:
@@ -59,8 +62,24 @@ class ReviewService:
         try:
             authorized = self._authorizer.can_decide(reviewer_id, log_id, action)
         except Exception as error:
+            logger.warning(
+                "authorizer call failed",
+                extra={
+                    "reviewer_id": reviewer_id,
+                    "log_id": log_id,
+                    "action": action.value if hasattr(action, "value") else str(action),
+                },
+            )
             raise ReviewPermissionError("reviewer authorization failed") from error
         if not authorized:
+            logger.warning(
+                "reviewer not authorized",
+                extra={
+                    "reviewer_id": reviewer_id,
+                    "log_id": log_id,
+                    "action": action.value if hasattr(action, "value") else str(action),
+                },
+            )
             raise ReviewPermissionError("reviewer is not authorized for this action")
 
         timestamp = decided_at or datetime.now(UTC)
@@ -83,12 +102,34 @@ class ReviewService:
         try:
             persisted_decision, _ = self._audit_writer.append_review_atomically(decision, event)
         except PersistenceConflictError as error:
+            logger.warning(
+                "review decision conflict",
+                extra={"decision_id": decision_id, "log_id": log_id},
+            )
             raise ReviewConflictError("review decision already exists") from error
         except PersistenceError as error:
+            logger.error(
+                "review persistence error",
+                extra={"decision_id": decision_id, "log_id": log_id},
+            )
             raise ReviewPersistenceError("review decision could not be persisted") from error
         except Exception as error:
+            logger.error(
+                "unexpected review error",
+                extra={"decision_id": decision_id, "log_id": log_id},
+                exc_info=error,
+            )
             raise ReviewPersistenceError("review decision could not be persisted") from error
 
+        logger.info(
+            "review decision recorded",
+            extra={
+                "decision_id": decision_id,
+                "log_id": log_id,
+                "reviewer_id": reviewer_id,
+                "action": action.value if hasattr(action, "value") else str(action),
+            },
+        )
         return persisted_decision
 
     @staticmethod

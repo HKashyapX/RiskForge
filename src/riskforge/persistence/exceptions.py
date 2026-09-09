@@ -7,6 +7,20 @@ class PersistenceError(RuntimeError):
     """Base class for persistence failures."""
 
 
+class PersistenceConnectionError(PersistenceError):
+    """Raised when the persistence backend is unreachable or the pool is exhausted."""
+
+    def __init__(self, message: str = "persistence connection unavailable") -> None:
+        super().__init__(message)
+
+
+class PersistenceTimeoutError(PersistenceError):
+    """Raised when a persistence operation exceeds its time limit."""
+
+    def __init__(self, message: str = "persistence operation timed out") -> None:
+        super().__init__(message)
+
+
 class PersistenceConflictError(PersistenceError):
     """Raised when an operation conflicts with an existing immutable record."""
 

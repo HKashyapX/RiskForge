@@ -216,8 +216,8 @@ def test_review_fails_closed_without_authentication_provider() -> None:
             "reason": "verified",
         },
     )
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "authentication_unavailable"
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "missing_credentials"
 
 
 def test_review_requires_an_authenticated_principal() -> None:
