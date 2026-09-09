@@ -1,0 +1,2602 @@
+[
+  {
+    "incident": {
+      "log_id": "LOG-202657474",
+      "timestamp": "2026-08-10T00:59:20.742292+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 3:45 p.m. on April 2 2013 an employee was working as a tile setter for Jeffrey Razook Tile. The firm installed ceramic tile. The employee had been working for the company for approximately six months. At the time of the incident he was performing his daily duties. He was working within proximity of an onsite coworker. The employee and the coworker were working from 16-foot (4.9-meter) extension ladders caulking the edges of five balconies. The employee reached over to his left lost his balance and fell to the ground. He fell approximately 11 feet (3.4 meters). He sustained bruises contusions and abrasions. He was transported to Cottage Hospital where he was treated for three hours. The Division was notified of the accident by the Santa Barbara CA fire department at 4:57 p.m. that same day. It initiated an inspection on April 12 2013. Interviews were conducted of the employee his supervisor and the coworker.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202657474",
+      "raw_sif_p_score": 0.03922036885558035,
+      "calibrated_sif_p_score": 0.03922036885558035,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 124
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202570339",
+      "timestamp": "2026-08-07T01:39:20.742905+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On April 10 2013 Employee #[ID] and a coworker were in a boom truck repairing a chimney when the basket came in contact with a 7 200 volt power line. Employee #[ID] was electrocuted and died at the scene.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202570339",
+      "raw_sif_p_score": 0.7600335055404654,
+      "calibrated_sif_p_score": 0.7600335055404654,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 268
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200515906",
+      "timestamp": "2026-07-25T13:35:20.742984+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On September 10 2013 Employee #[ID] and Coworker #1 employed by a heavy construction contractor specializing in demolition and other site preparation were engaged in demolishing a commercial building. The building's structure consisted of concrete floors columns panels and metal beams. The building had three stories with a total height of 69 feet. The two workers were operating excavators to demolish columns and bays and drop them to the ground. On the previous day they had left an overhang of concrete from three bays. On the morning of September 10 2013 Coworker #1 continued to demolish columns while Employee #[ID] used his excavator to break up concrete on the ground. Coworker #1 used his excavator to pull down a column. The overhanging concrete fell to the ground crushing Employee #[ID] and killing him. This fatality was investigated by Minnesota OSHA. At the time of this report MNOSHA had proposed three serious citations for the employer and no citations for the general contractor.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200515906",
+      "raw_sif_p_score": 0.9889618850802411,
+      "calibrated_sif_p_score": 0.9889618850802411,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_falling_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 271
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201159258",
+      "timestamp": "2026-07-04T14:56:20.743069+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 11:30 a.m. on February 10 2004 Employee #[ID] a regular employee of Mark Dattelo's Heating and Air Conditioning was inside the attic near the 35-in. by 30-in. attic opening instructing a coworker how to run a vent from the heating furnace to the roof. He had to go down and get a reducer. As Employee #[ID] approached the attic opening he had one foot on the truss and the other one on a 2 by 4 wooden block. The wooden block gave way causing Employee #[ID] to fall 9 ft onto the cement floor. Employee #[ID] fractured his back and was taken to Eisenhower Medical Center in Rancho Mirage California where he was hospitalized for 6 days. Employee #[ID] was not wearing personal fall protection when he fell. The coworker was not injured. The employer is a HVAC contractor.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201159258",
+      "raw_sif_p_score": 0.063519652989168,
+      "calibrated_sif_p_score": 0.063519652989168,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 123
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-767111",
+      "timestamp": "2026-06-28T22:19:20.743123+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "A THREE-WORKER CREW WAS INSTALLING A HEATING AND AIR CONDITIONING DUCT SYSTEM IN A BATTERY CHARGING ROOM. THE DUCT WORK WAS LOCATED ABOUT 6 FEET 9 INCHES ABOVE THE FLOOR. THE LEAD WORKER REMAINED AT GROUND LEVEL WHILE THE OTHER TWO EMPLOYEES WERE WORKING FROM A SCAFFOLD PERFORMING THE INSTALLATION. THREE DUCT SECTIONS HAD BEEN INSTALLED AND THE TWO EMPLOYEES BEGAN INSTALLING THE THIRD WHICH HAD TO BE POSITIONED ABOVE A CABLE TRAY CONTAINING ENERGIZED BUT INSULATED ELECTRIC CONDUCTORS. A PIECE OF 0.75-INCH-THICK PLYWOOD THAT WAS 16 INCHES WIDE HAD BEEN LAID ACROSS THE 30-INCH WIDE CABLE TRAY TO SUPPORT THE 40-INCH-BY-20.5-INCH-BY-22.5-INCH DUCT SECTION. THE BODY OF THE DUCT WAS 16 INCHES WIDE WHERE IT WAS TO BE SUPPORTED BETWEEN CEILING HANGERS THAT WERE ALSO 16 INCHES WIDE. ONE OF THE TWO EMPLOYEES REMAINED ON THE SCAFFOLD WHILE HIS COWORKER WALKED ONTO THE CABLE TRAY. THE TWO EMPLOYEES THEN MANEUVERED THE DUCT TO FIT BETWEEN THE HANGERS. THE DUCT FELL OFF THE PLYWOOD CUTTING THE INSULATION ON A 120-VOLT CONDUCTOR. THIS ENERGIZED THE DUCT SECTION WHICH WAS WEDGED BETWEEN THE METAL SIDE OF THE CABLE TRAY AND A PIECE OF METAL CONDUIT ATTACHED TO THE CONCRETE WALL. THE EMPLOYEE ON THE CABLE TRAY WAS SITTING OR SQUATTING ON THE SIDE RAIL OF THE TRAY WITH THE DUCT IN HIS LAP GRASPING THE DUCT ANGLE IRON FLANGE WITH HIS HANDS. THIS EMPLOYEE WAS ELECTROCUTED. THE EMPLOYEE ON THE SCAFFOLD RECEIVED AN ELECTRIC SHOCK WHEN HE TOUCHED THE DUCT (THOUGH FOR SOME REASON HE WAS NOT LISTED ON THE OSHA 170 FORM AS BEING INJURED). HE WAS ABLE TO RELEASE THE DUCT AND CLIMB DOWN FROM THE SCAFFOLD. THE PLANT MAINTENANCE ELECTRICIANS MEASURED 120 VOLTS BETWEEN THE DUCT AND GROUND BEFORE RETRIEVING THE DEAD EMPLOYEE.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-767111",
+      "raw_sif_p_score": 0.9592808497188811,
+      "calibrated_sif_p_score": 0.9592808497188811,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 170
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-741199",
+      "timestamp": "2026-08-26T09:36:20.743169+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "AT ABOUT 2:55 P.M. ON JULY 16 1993 A SERIOUS ACCIDENT OCCURRED AT A REMOTE WORKSITE AT 25121 NORTH SIERRA HIGHWAY NEWHALL CA. THE SITE IS AN OIL FIELD FACILITY OF ARCO OIL AND GAS CO. THE ON-SITE EMPLOYER WAS A SUBCONTRACTOR OF ARCO. THE EMPLOYEES WERE ATTEMPTING TO HOIST AND ATTACH BY CRANE A LARGE METAL GUARD ONTO AN OIL PUMPING WELL. THE INITIAL HOIST RIGGING WAS NOT ADEQUATE TO KEEP THE GUARD IN A DESIRED POSITION AND IT WAS LOWERED A SHORT DISTANCE BACK TO THE GROUND TO BE RE-RIGGED. THE GUARD STRUCK ONE OF TWO HEAVY COUNTERWEIGHTS THAT WERE RESTING ON THE GROUND. BOTH COUNTERWEIGHTS FELL OVER STRIKING THE LEG OF EMPLOYEE #[ID] CAUSING LEG AND ANKLE INJURIES.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-741199",
+      "raw_sif_p_score": 0.20533364826654496,
+      "calibrated_sif_p_score": 0.20533364826654496,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 200
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200375574",
+      "timestamp": "2026-07-31T16:28:20.743212+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On July 26 2011 an employee was performing heating and air conditioning system (HVAC) work in the attic of a commercial building. He fell through an opening in the ceiling. He fell approximately 11.5 feet to a concrete floor. He suffered a fatal concussion. The employee was regularly employed by Scott Gochnauer Inc. dba Gochnauer Mechanical Hilton Head Island SC.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200375574",
+      "raw_sif_p_score": 0.17153482586584287,
+      "calibrated_sif_p_score": 0.17153482586584287,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 186
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200541233",
+      "timestamp": "2026-06-12T08:25:20.743253+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On April 18 2005 Employee #[ID] was part of an asbestos removal crew removing the old roof from a building. It consisted of metal panels and sections of glass windows reinforced with chicken wire. Employee #[ID] was wearing a harness and lanyard but was not tied off. He was unscrewing the bolts of one of the panels when he stepped backward and fell through the glass to the ground below. The distance from the roof to the ground was approximately 46 feet. He was killed.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200541233",
+      "raw_sif_p_score": 0.15407888906273315,
+      "calibrated_sif_p_score": 0.15407888906273315,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 229
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-14211379",
+      "timestamp": "2026-08-23T00:07:20.743294+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "AN EMPLOYEE WAS FILLING A DAYTON GASOLINE-POWERED GENERATOR WITH 1 GALLON OF GASOLINE FROM A 2.5-GALLON NON-APPROVED SPOUTLESS GAS CAN. HE SPILLED GASOLINE OVER THE GENERATOR'S FUEL TANK AND ONTO THE MOTOR AND WIRING. HE REPLACED THE FUEL CAP AND STARTED THE GENERATOR. SPARKS FROM THE WIRING OR SPARK PLUG IGNITED THE GASOLINE VAORS AND SET FIRE TO THE GENERATOR. THE PORTABLE GENERATOR MEASURED ABOUT 30 INCHES LONG BY 14 INCHES HIGH BY 17 INCHES WIDE AND IT HAD A 1 GALLON GAS TANK. (IT WAS A DAYTON MODEL 159 3500 WATT 240 VOLT; SN 3W0141.) THE WEATHER WAS 88 DEGREES F HIGH HUMIDITY WINDS 4 - 8 MPH (FROM AIRPORT WEATHER REPORT). THE INJURED EMPLOYEE SUSTAINED FIRST DEGREE BURNS ON HIS RIGHT HAND WRIST AND FOREARM. THERE WAS NO LOST TIME. THE EMPLOYEE WAS A GLAZIER. REFUELING THE GENERATOR WAS PART OF HIS JOB. HE HAD EARLIER ASKED ABOUT THE WHEREABOUTS OF THE SPOUT BUT HAD USED THE CAN WITHOUT THE SPOUT ANYHOW.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-14211379",
+      "raw_sif_p_score": 0.16810711594913746,
+      "calibrated_sif_p_score": 0.16810711594913746,
+      "deterministic_override": false,
+      "routing": "hitl_review",
+      "matched_iogp_rules": [
+        "fire_explosion"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 344
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200542108",
+      "timestamp": "2026-08-09T15:33:20.743351+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "An electrical fire broke out at a former Holiday Inn. A person was on site allegedly conducting an electrical evaluation when the fire occurred. The deceased was found by fire fighters who responded. No visible burns or injury to the body were apparent. The preliminary coroner's report listed the cause of death as smoke inhalation. No other details were provided.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200542108",
+      "raw_sif_p_score": 0.19396341162483952,
+      "calibrated_sif_p_score": 0.19396341162483952,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 338
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200674141",
+      "timestamp": "2026-08-01T19:28:20.743397+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 8:37 a.m. on February 12 2003 an employee of Watson Trucking and Equipment Rental was operating a Bobcat at a construction site. The employee was removing debris from the back of a house that was under construction. The employee was in shallow water operating the Bobcat. He was observed moving the Bobcat bucket in and out of the water. It appears that he was attempting to clean the bucket when the employee tried to back up out of the water. He was unsuccessful. When he tried to move the Bobcat to the left the Bobcat flipped over in the deepest part of the canal. The Bobcat slid down the embankment coming to rest in approximately 48 ft of water. The employee was pinned under the machine and subsequently drowned.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200674141",
+      "raw_sif_p_score": 0.01692860574652267,
+      "calibrated_sif_p_score": 0.01692860574652267,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 400
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201370954",
+      "timestamp": "2026-06-18T04:54:20.743453+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On July 29 2005 Employee #[ID] was operating a Rubber Tired Grove Crane. The crane was used to hoist purlins onto the walls of a steel building. While on the ground a hook was attached to purlin and it was lifted into place using a tagline. After the purlin was placed the hook was detached and lowered to the ground. During the operation the tagline became entangled. Employee #[ID] was instructed to untangle the tagline. The crane hook was lowered and he climbed onto the hoist cable without fall protection. With one foot in the sling he held the hoist cable above the hook block with both hands. Then he was hoisted 29.5 ft into the air. As he attempted to untie the tagline from the purlin he let go of the cable causing the sling to swing sideways. The movement of the swing result in his lost of balance. He fell to the ground landing on his back and head. He was flown by helicopter to a medical center where he remained in a coma until his death thirteen days later.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201370954",
+      "raw_sif_p_score": 0.2039431507271584,
+      "calibrated_sif_p_score": 0.2039431507271584,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 132
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201852654",
+      "timestamp": "2026-06-27T06:43:20.743503+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On November 19 2000 Employee #1was occupying an unshored excavation trench when its walls collapsed. Emergency medical services were summoned. They arrived at the scene and extracted the employee and then transported him to the hospital. He was hospitalized for ligamentous and tendinous injuries to his extremities and received orthopedic surgery and postoperative care. The employee was trapped within the collapsed trench for 5 hours.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201852654",
+      "raw_sif_p_score": 0.937640513330042,
+      "calibrated_sif_p_score": 0.937640513330042,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 340
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201504909",
+      "timestamp": "2026-07-08T05:57:20.743557+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 4:00 p.m. on April 6 2004 Employee #[ID] a mobile crane operator was operating a crane at the control panel on the left side of the carrier. A coworker was assisting Employee #[ID] in storing a jib. Employees were not trained in the work-related tasks. Employee #[ID] observed the coworker installing the jib stow pin upside down into the jib stow bracket-boom and told him to install it from the top. Employee #[ID] removed the two pins on the left side jib to boom tip then jogged the jib to seat it on the front jib stow bracket-boom. He then went to the front of the boom and installed the cable and anti-two block device on the boom tip sheave and reinstalled the load line retaining pins. He elevated the boom approximate 20 degrees and began to rewind the cable. The swing jib became displaced from the mounting brackets and fell. Employee #[ID] ran away from the control area to avoid the falling jib and crossed into its path. He was struck by the jib and died.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201504909",
+      "raw_sif_p_score": 0.717617421026093,
+      "calibrated_sif_p_score": 0.717617421026093,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_falling_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 358
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200831329",
+      "timestamp": "2026-06-21T03:25:20.744053+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On September 30 2008 an employee was power washing a wall. He fell 61 in. while descending from the scaffold platform 7 ft 3 in. above the next lower level. The employee bruised his back on a section of angle iron below the scaffold when he fell on it. The employee was not hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200831329",
+      "raw_sif_p_score": 0.07187834086441436,
+      "calibrated_sif_p_score": 0.07187834086441436,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 368
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-14259493",
+      "timestamp": "2026-08-15T15:07:20.744105+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "AT APPROXIMATELY 7:55 ON MARCH 3 1985 A WORK CREW WAS LOWERING A GEAR REDUCTION PART TO THE GROUND FROM THE BACK OF A MONIGAN DRAGLINE (#668). THE WORKSITE WAS LOCATED AT THE HURRICANE PROTECTION CLUB LAROSE LOUISIANA. EMPLOYEE #[ID] AND TWO OTHER MEN WERE WORKING AT THE REAR OF THE DRAGLINE EMPLOYING A YALE MANUAL CHAIN HOIST (1 1/4 TON CAPACITY) TO LOWER THE 2600 POUND TRANSMISSION PART. THE LOAD WAS SUSPENDED FROM THE HOIST BY HOOKS AND A HIGH TENSILE 3/8 INCH CHAIN. THE LOWER CHAIN WAS ATTACHED TO EYE BOLTS LOCATED ON EACH SIDE OF THE LOAD. THE TRANSMISSION COMPONENT COMES EQUIPPED WITH THE BOLTS WHICH WERE 1/2 INCH IN DIAMETER. TWO OF THE EMPLOYEES WERE TRYING TO CLEAR THE PART FROM THE BACK OF THE DRAGLINE WHEN ONE OF THE SUPPORTING EYE BOLTS SHEARED. THE LOAD FELL ABOUT 16 FEET STRIKING THE DRAGLINE COUNTERWEIGHT AND REBOUNDING TOWARD EMPLOYEE #[ID]. HE WAS STRUCK BY THE HEAVY PART AND KILLED. WRITTEN COMPANY RULES CAUTION EMPLOYEES ABOUT STANDING UNDER SUSPENDED LOADS. IT WAS ALSO UNWISE TO RELY UPON THE SUPPLIED EYE BOLTS TO SUPPORT THE HEAVY LOAD.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-14259493",
+      "raw_sif_p_score": 0.7415736453391033,
+      "calibrated_sif_p_score": 0.7415736453391033,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 437
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202561254",
+      "timestamp": "2026-07-21T03:47:20.744147+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 13 2011 Employee #[ID] was working inside a large air handling unit and was electrocuted when he made contact with the energized duct heater coils. No additional details were provided in the original narrative.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202561254",
+      "raw_sif_p_score": 0.720919785138219,
+      "calibrated_sif_p_score": 0.720919785138219,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 246
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202508362",
+      "timestamp": "2026-08-13T12:59:20.744189+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At about 3:30 a.m. on January 28th 2011 an employee was working with two coworkers inside the carbon monoxide flue duct removing refractory. This accident site was an oil refinery that processes crude oil into saleable petroleum products. The turnaround work involved in the accident consisted of refractory removal inside a flue duct that was associated with the FCCU. The work crew was moved to a new confined space area in the Duct works because the refractory needed to be immediately removed at the location. The employer required the workers removing refractory to work within four feet of the leading edge associated with the 28 foot vertical fall hazard. Because of the heavy weight of the rivet buster the work crew traded off using the tool until one got tired. The employee had finished using the rivet buster and he handed the tool to a coworker. For an unknown reason he walked the wrong direction into vertical flue duct section. The employee fell 28 feet onto a staging area. The employee's supervisor did not work in the permit confined with the workers. The employee and three coworkers were in a confined space adjacent to the fall hazard. All the employees including the supervisor required for all the permitted flue duct spaces to be \"100 percent tie off\". Nobody was tied-off because no anchor points were established in the duct. The following factors contributed to the 1) lack of barrier restricting the movement by the fall hazard at the duct and 2) lack of fall protection for workers inside the duct as required by the confined space permit. The employee sustained a broken femur and compound fracture of his left arm.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202508362",
+      "raw_sif_p_score": 0.15675373106221574,
+      "calibrated_sif_p_score": 0.15675373106221574,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 148
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200123099",
+      "timestamp": "2026-08-15T00:09:20.744231+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 10:40 a.m. on January 11 2010 Employee #[ID] was laying grid lines and shoveling snow on a second floor deck. An elevator shaft opening was covered with a plastic tarp with temporary guardrails around a portion of the shaft opening. Employee #[ID] was not wearing any fall protection equipment. He fell 30 ft through the elevator shaft opening and died.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200123099",
+      "raw_sif_p_score": 0.19967865184282207,
+      "calibrated_sif_p_score": 0.19967865184282207,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 137
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202454237",
+      "timestamp": "2026-09-02T23:55:20.744301+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On December 26 2007 Employee #[ID] was operating a P&H; Lattice truck-mounted boom crane model #9150 serial #51529. He had completed work at a tilt-up panel commercial construction job in Monrovia CA and was dismantling the crane for travel. Previously he had unmounted a rear counterweight and set it on a flatbed truck on one side of the site. This was necessary because the crane had become stuck in the mud that formed after several days of heavy rain. To remove the counterweight the crane had been jacked up and plywood placed under the wheels to free the crane. Employee #[ID] then moved the crane to the other side of the site to unload a spreader bar and associated rigging onto another flatbed. He did not set the outriggers before starting this job. Employee #[ID] then tried to \"get a better look\" at the position of the second flatbed truck which apparently had pulled up farther than he had anticipated. He started to swing the crane to the left and also to boom up on the tires when the crane began to tip. Employee #[ID] attempted to jump free of the crane as it was going over and suffered a fractured right arm. He was transported to Huntington Memorial Hospital for treatment. Employee #[ID] later stated that he felt he had been in error because he should have set the outriggers before starting the task underway at the time of the accident.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202454237",
+      "raw_sif_p_score": 0.1207662550521991,
+      "calibrated_sif_p_score": 0.1207662550521991,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 256
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201145802",
+      "timestamp": "2026-07-28T17:13:20.744346+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 30 2004 Employee #[ID] was mixing a plaster material in an Essex plaster and mortar mixer. Model and Serial Number was not marked on this equipment. From the other information available from the manufacturer it was determined to be model [REDACTED_ID] with 12 cubic ft. capacity. This equipment consists of a motor unit and a mixer unit. The cylindrical mixer was 36 in. long with a 27-in. diameter. The mixing paddles inside this barrel rotate on a horizontal axis along the centerline of the mixer barrel. The top opening on this mixer measuring approximately in. ft by 30 in. is covered with a grated cover which opens automatically when the mixing barrel is tilted manually with a handle to pour out mixed material. The grated cover has a grid of 3.5 in. by 3.5 in. openings. One of the bars on this grid was missing which made a set of 9 of these openings to measure 7 in. by 3.5 in. The clearance between the mixing paddles and the grated cover was 6 in. Employee #[ID] remembered that at the time of this accident he was pouring dry cement into the mixer. He was placing 90-pound cement bags one at a time on top of the grill cover and then he was cutting the bag with a knife to let the material fall into the mixer. This equipment was manufactured with a bag cutter built on the grill cover which was missing along with a missing bar on this safety grate. Employee #[ID] reached into the mixer with his right hand and his fingers got caught between the rotating paddle and the side of the mixing barrel. Employee #[ID] amputated about 1.5 in. of his right middle finger and about 0.5 in. of his right index finger. He was hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201145802",
+      "raw_sif_p_score": 0.9472960744643957,
+      "calibrated_sif_p_score": 0.9472960744643957,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "caught_in_between"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 328
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201066792",
+      "timestamp": "2026-06-19T19:49:20.744387+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "A approximately 11:30 a.m. on October 15 2003 Employee #[ID] was a non-contract employee of Siemers Engineering. He and another Siemers employee were installing underground water utilities at a new shopping center in San Marcos CA. Employee #[ID] was operating a Caterpillar 416C backhoe to dig shallow trenches for pipe. He was qualified as an equipment operator but he was operating the backhoe controls from outside the vehicle. He was found by his foreman with his hands on the control pedals trapped between the hydraulic boom and an outrigger. His chest was crushed and he had been killed. There were no eyewitnesses and it is not known why he was operating the backhoe in this manner.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201066792",
+      "raw_sif_p_score": 0.862002921365466,
+      "calibrated_sif_p_score": 0.862002921365466,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 375
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201691078",
+      "timestamp": "2026-08-16T19:09:20.744427+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On October 13 2003 Employees #1 and #2 were placing deadman when the steel cage bridge column collapsed. Employee #[ID] suffered a punctured left lung and Employee #[ID] suffered compound fractures to the left arm. According to the investigation the deadman location or guying was defective. Although there was no evidence of the deadman shifting from the collapse it was shown that they were not placed on flat surfaces and that they were not positioned at 90 degrees from each other as the engineered drawing illustrated. Both employees were hospitalized for treatment of their injuries.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201691078",
+      "raw_sif_p_score": 0.20455522139263665,
+      "calibrated_sif_p_score": 0.20455522139263665,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 345
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-170812952",
+      "timestamp": "2026-06-22T00:40:20.744483+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] was standing on an approximately 50 ft long beam assisting as a crane set I-beams for false work on a bridge. The friction collar or piling bracket around the eight-sided column slipped all the way down the column a distance of approximately 10 ft. Employee #[ID] was trying to climb to the top of the beam when he fell and his right foot became caught between the beams and crushed.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-170812952",
+      "raw_sif_p_score": 0.951081593820508,
+      "calibrated_sif_p_score": 0.951081593820508,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 371
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200775534",
+      "timestamp": "2026-06-21T15:16:20.744529+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On October 24 2008 Employee #[ID] was on a pump jack scaffold installing siding and aluminum fascia material on the roof eve or a two-story dwelling. When the ladder failed he fell approximately 19 ft to the ground. Employee #[ID] was hospitalized for lacerations and fractures. At the time of the incident he was not using fall protection equipment and the scaffold had not been secured.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200775534",
+      "raw_sif_p_score": 0.14335811077497654,
+      "calibrated_sif_p_score": 0.14335811077497654,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 301
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-170787618",
+      "timestamp": "2026-08-26T11:26:20.744570+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 2:00 p.m. on August 8 1997 Employee #[ID] an ironworker was part of a crew installing earthquake bridge deck support systems on a bridge over the Sacramento River near Woodland CA. The crew was hanging under the bridge installing support beams that were being raised by a hydraulic crane to a point just beneath the bridge deck. Each beam weighed approximately 1 000 lb and consisted of two 12 in. by 13 ft wide C-channel beams with a 3 ft long by 2 1/2 ft wide by 1 in. high steel plate bolted between them near the center. The support beams were then stood across the top of the guardrails of an aerial boom lift. There was one employee in the manbasket as the lift moved each beam into position. The aerial lift was supported by planking placed between the main bridge support girders. Employee #[ID] was standing under a support beam preparing to make the connection when the pressure on the planking became too great and it folded causing the boom of the lift to jerk and the support beam on the guardrails to topple and fall. The falling beam grazed Employee #[ID]'s chest and then struck his leg and foot severely bruising his leg and amputating two of his toes and part of his foot. The aerial lift was rated for a maximum load of 500 lb for both people and materials but it was carrying about 1 200 lb at the time of the accident. In addition the support beam had not been secured to the lift while it was being transported.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-170787618",
+      "raw_sif_p_score": 0.7984210904182848,
+      "calibrated_sif_p_score": 0.7984210904182848,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 436
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201486743",
+      "timestamp": "2026-08-01T21:36:20.744611+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 11 2004 Employee #[ID] was pinned under a 25-ft long 3 000 pound steel I-beam which rolled off a pile of stacked beams. He was hospitalized with a fractured left leg.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201486743",
+      "raw_sif_p_score": 0.9740406069960168,
+      "calibrated_sif_p_score": 0.9740406069960168,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_falling_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 137
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202489019",
+      "timestamp": "2026-07-13T03:36:20.744667+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On May 19 2009 Employee #[ID] may have inadvertently installed the winch cable hook to the safety cable as opposed to the transition plate of the hoist cables where it should have been attached. Because this equipment was being attached inside a light pole most of the installation was accomplished through touch because visibility was limited. Since the safety cable was also attached to the transition plate Employee #[ID] may have thought the winch hook was properly installed and holding the hoist cables. Later when he reached into the light pole to release the winch hook from where he thought it was attached it slid down the safety cable under sufficient tension and severely injured the fourth and fifth fingers of his left hand. Employee #[ID] was transported to a medical center where he underwent treatment including amputations of the severely injured fingers and was released.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202489019",
+      "raw_sif_p_score": 0.7008035820040576,
+      "calibrated_sif_p_score": 0.7008035820040576,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "caught_in_between"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 392
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202657623",
+      "timestamp": "2026-06-30T10:19:20.744726+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 6:00 a.m. on February 25 2013 Employee #[ID] a Journeyman Lineman was descending Tower 57 which was under construction near a hillside. As the employee was descending he grabbed a lacing that was not adequately secured causing him to lose his balance and fall striking other coworkers as he falls approximately 25-ft to the ground. The employee was wearing fall protection equipment but was not properly tied off. Employee #[ID] was taken to an area hospital where he was treated for blunt trauma rib fractures and spinous process fracture. Employee #[ID] remains hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202657623",
+      "raw_sif_p_score": 0.17455587318128304,
+      "calibrated_sif_p_score": 0.17455587318128304,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 412
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201881232",
+      "timestamp": "2026-07-20T04:45:20.744787+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 22 2007 Employee #[ID] a mechanic and three coworkers were using an excavator bucket to vertically push in railroad tracks. The first piece of track went in easily but they were having a hard time with the second one. They decided to try using the excavator bucket to tap on the rail and two of the coworkers backed off the rail. Employee #[ID] and the other coworker continued to hold the rail in place. When the bucket lifted up from the rail it twisted off its bracket fell and struck both workers on the head. Employee #[ID] was killed. The coworker was transported to the hospital where he was treated and released.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201881232",
+      "raw_sif_p_score": 0.7263563884515328,
+      "calibrated_sif_p_score": 0.7263563884515328,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_falling_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 439
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202544649",
+      "timestamp": "2026-06-27T14:53:20.744830+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 12:00 p.m. on September 6 2012 Employee #[ID] sustained serious injuries when his left wrist was burned by hot rubberized asphalt. Employee #[ID] was attempting to pour hot rubberized asphalt on to the vertical surface of a planter above ground level. The rubberized asphalt was intended to be waterproofing for the planter. Employee #[ID] was treated and released for severe burns to his wrist and hand from the accident.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202544649",
+      "raw_sif_p_score": 0.02930975277899025,
+      "calibrated_sif_p_score": 0.02930975277899025,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "extreme_temperature"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 203
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202544201",
+      "timestamp": "2026-08-20T12:04:20.744869+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 11:15 p.m. on August 16 2012 Employee #[ID] was hand-shoveling soil into an excavation in with a coworker who was operating a backhoe. At one point the employee believed that he was about to be struck by the backhoe bucket and he moved rapidly to his right. Employee #[ID] was struck by the backhoe bucket and fell seven ft from the sea wall of a dry lake landing on un-compacted soil. Employee #[ID] was transported to Good Samaritan Hospital by ambulance. The employee was treated for multiple fractures of the proximal tibia. Employee #[ID] was hospitalized for 4 days.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202544201",
+      "raw_sif_p_score": 0.22476872880304793,
+      "calibrated_sif_p_score": 0.22476872880304793,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 368
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200515849",
+      "timestamp": "2026-06-23T19:48:20.744923+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 6 2013 Employee #[ID] with Ugstad Plumbing Inc. rolled the company van onto two ramps and attempted to fix a squeaky universal joint. After the joint was disconnected the van rolled down the ramps and crushed Employee #[ID]. Employee #[ID] was killed. There were no witnesses to the accident. He was discovered by the Fergus Falls Police Department.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200515849",
+      "raw_sif_p_score": 0.7151237372574195,
+      "calibrated_sif_p_score": 0.7151237372574195,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 153
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-14393979",
+      "timestamp": "2026-07-04T16:02:20.744969+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "EMPLOYEE #[ID] AGE 20 WAS 110 FEET ABOVE THE GROUND WORKING ON A RADIO ANTENNA. WHILE THERE HIS GASOLINE WELDER (D.C.) CAUGHT FIRE. IN HIS ATTEMPT TO EXTINGUISH THE BLAZE EMPLOYEE #[ID] DISCONNECTED HIS SAFETY BELT. WHILE FIGHTING THE FIRE HE FELL 110 FEET TO HIS DEATH.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-14393979",
+      "raw_sif_p_score": 0.14352615602112873,
+      "calibrated_sif_p_score": 0.14352615602112873,
+      "deterministic_override": false,
+      "routing": "hitl_review",
+      "matched_iogp_rules": [
+        "fire_explosion"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 120
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201925344",
+      "timestamp": "2026-07-27T04:43:20.745010+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On December 1 2010 Employee #[ID] painted a four story condominium complex. The first floor of the complex was an open area designed for resident parking. Employee #[ID] operated a JLG model 600S serial number 0954270300042766 aerial lift. He worked from an elevated work platform. Employee #[ID] had his back to the building. He attempted to position the aerial lift to begin painting the window trim and either moved the aerial lift or boomed the mast out. As a result Employee #[ID] became pinned between the building and the control station inside the elevated working platform. Employee #[ID] suffered severe injuries including contusions and abrasions. Other employees at the work site found Employee #[ID] pinned between the edge of the garage and the controls of the aerial lift. Employee #[ID] was taken by helicopter to a local hospital. On December 14 2010 Employee #[ID] died in the hospital from the injuries he sustained in this accident.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201925344",
+      "raw_sif_p_score": 0.7945675085660784,
+      "calibrated_sif_p_score": 0.7945675085660784,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "caught_in_between"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 153
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201078854",
+      "timestamp": "2026-08-23T09:16:20.745079+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 2:00 p.m. on November 5 2012 Employee #[ID] and a coworker were working at a facility that installed doors frames and interior hardware. The employees were involved in the transportation of a large armor plate in the terminal of an airport. The plate had a thickness of 15.125 in. width of 3 ft and length of 4 ft and weight of 600 lb. The plate was being placed onto a stack of armor kick plates inside a cargo container of the terminal. As the plate was located on the stack the heavy stack of plates shifted and collapsed onto Employee #[ID]'s lower right leg. He was knocked to the ground and sustaining severe leg fractures to his tibia and fibula. Employee #[ID] was transported to a medical center where he underwent surgical procedures on the leg fractures and was then hospitalized over approximately 16 days for post-operative care and further treatment.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201078854",
+      "raw_sif_p_score": 0.9837639974740187,
+      "calibrated_sif_p_score": 0.9837639974740187,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 306
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200823409",
+      "timestamp": "2026-07-10T03:49:20.745124+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On November 13 2006 Employee #[ID] received a call on his cell phone from a coworker asking him to find the serial/order number of a 480-volt/three-phase attachment plug so that more attachment plugs could be ordered. Employee #[ID] found such a plug possibly choosing it because it was in an idle machine and the only one not in production. Employee #[ID] accidentally placed the ground prong into the energized plug receptacle and grounded out causing the third-phase fuse to blow. He was electrocuted. The wiring and the Chicago Pyle/National attachment plug were found to be very dilapidated and had not been inspected or maintained. Because of the configuration of the plug any of the eight-prong male plugs could have been inadvertently placed in any of the female receptacles energizing the metal casing. Because of Employee #[ID]'s medical condition and the fact that there were no electrical burns inside or outside his body the coroner considered ruling the cause of death as natural causes/coronary disease. After continuity testing and destructive testing of the evidence the cause of death was ruled to be electrocution.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200823409",
+      "raw_sif_p_score": 0.9420054015771138,
+      "calibrated_sif_p_score": 0.9420054015771138,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 342
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202561619",
+      "timestamp": "2026-06-29T21:09:20.745165+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On March 7 2013 a roofer employed by Roof USA Service Center (Arizona) LLC was working at a commercial building. He was descending a fixed ladder while carrying two five-gallon empty plastic buckets in his right hand and gripping the ladder's left handrail with his left hand. The worker momentarily lost his grip on the handrail. As he tried to reestablish his grip he lost his balance. He fell approximately 15 feet to the floor. He sustained a fatal concussion.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202561619",
+      "raw_sif_p_score": 0.12239988810846061,
+      "calibrated_sif_p_score": 0.12239988810846061,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 306
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201991957",
+      "timestamp": "2026-07-11T18:00:20.745204+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 16 2005 Employee #[ID] a technician was servicing an air handler unit when a blue flashlight fell into the coil compartment. He was trying to retrieve it when he contacted the metal frame of the cabinet at the same time as a 240-volt capacitor that was installed on top of the air blower housing. The capacitor had exposed live electrical parts and Employee #[ID] was electrocuted.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201991957",
+      "raw_sif_p_score": 0.9347602116045928,
+      "calibrated_sif_p_score": 0.9347602116045928,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 208
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202469359",
+      "timestamp": "2026-07-31T10:22:20.745242+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On the afternoon of October 24 2010 a three-person (2 workers plus a supervisor) roofing crew including Employee #[ID] was repairing restoring and installing the asphalt covering on the top deck of a parking structure. Part of the exposed level was protected with parapets but the remainder was unprotected. The process included raising and lowering 5-gallon buckets of hot tar using a standard A-frame hoisting device. This device was commonly used by the roofers with ballast blocks or weights. However in this instance Employee #[ID] a 45-yr-old male construction worker proceeded to use the device without the required counterweight. With the imbalance and no fall protection the worker was ejected from the roof and fell 35-ft to his death landing on his back against the concrete floor below. After Employee #[ID] was taken by ambulance from the scene the supervisor instructed the second member to finish the job.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202469359",
+      "raw_sif_p_score": 0.20035583112521038,
+      "calibrated_sif_p_score": 0.20035583112521038,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 416
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200263416",
+      "timestamp": "2026-08-13T10:28:20.745281+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On April 2 2008 Employees #1 #2 and #3 moved the trolley and scaffold to another location on the bridge and then proceeded to walk from the bridge to the bank of the river. Upon arriving at the edge of the river they saw that the scaffold was not where they had left it. Investigations revealed the eye in the tongue on the ballast plate failed releasing the scaffold and spreader bar allowing them to fall into the river from approximately 50 feet. All three employees were lost. A body of one employee was recovered when they retrieved the scaffold from the bottom of the river. This employee had become entangled in the ropes attached to the scaffold. Another body was later recovered and one employee remains missing.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200263416",
+      "raw_sif_p_score": 0.7863945550215234,
+      "calibrated_sif_p_score": 0.7863945550215234,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 337
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202657912",
+      "timestamp": "2026-06-21T02:26:20.745321+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 1:49 p.m. on July 20 2013 Employee #[ID] and Coworker #1 temporarily hired by a residential and commercial carpet cleaning and water restoration company were working at a residential building the home of the employer's next door neighbor. They had been hired to replace a wood fence. Coworker #1 who had 33 years of experience as a roofer brought his own Skil Saw. He was cutting all the wood boards for the fence. Employee #[ID] was assigned to level the dirt and haul wood. The employer who was on site instructed Employee #[ID] not to use any power tools. According to the subsequent investigation Employee #[ID] decided to make a cut on one of the boards. The saw blade cut through the board and into his right knee. The employer transported Employee #[ID] to an urgent care medical facility but it was closed. He then took Employee #[ID] to the Santa Barbara Cottage Hospital where Employee #[ID] was treated for a 10-inch long laceration to his right knee and hospitalized for under 22 hours. The employer notified Cal/OSHA at 10:35 p.m. on July 23 2013. Cal/OSHA initiated its investigation at 8:55 a.m. on August 9 2013. The investigation included interviews with both Employee #[ID] and Coworker #1. The investigation concluded that there was no employer knowledge. Cal/OSHA did issue the employer General citations for CCR Title 8 1509(a); CCR Title 8 1509(b); CCR Title 8 3395(f)(1); and CCR Title 8 3395(f)(3).",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202657912",
+      "raw_sif_p_score": 0.290858125955044,
+      "calibrated_sif_p_score": 0.290858125955044,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 321
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200780344",
+      "timestamp": "2026-08-13T07:43:20.745376+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] was working at the bottom of a 10 ft deep pit when he passed out. A coworker who went down to rescue him started to feel sick so he emerged from the pit and called for help. He then reentered the pit with a second coworker who passed out before Employee #[ID] could be rescued. The first coworker was again able to escape. Emergency Services arrived and extricated Employee #[ID] and the second coworker from the pit. Employee #[ID] died of asphyxia from inhalation of argon gas.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200780344",
+      "raw_sif_p_score": 0.27691359059519416,
+      "calibrated_sif_p_score": 0.27691359059519416,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "chemical_exposure"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 141
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202674909",
+      "timestamp": "2026-06-24T14:14:20.745437+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On April 9 2013 Employee #[ID] a brick tender was using a STIHL cut-off saw to cut rebar. The employee filled the saw with gasoline and replaced the cap. Fuel leaked from the STIHL cut-off saw and a spark ignited the leaked fuel. The employee was burned on his left arm and leg. The employee was transported to the Sutter Hospital by coworkers and was then transferred to UC Davis Burn unit where he was treated for the burns. Employee #[ID] remained hospitalized for ten days.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202674909",
+      "raw_sif_p_score": 0.046045437096329446,
+      "calibrated_sif_p_score": 0.046045437096329446,
+      "deterministic_override": false,
+      "routing": "hitl_review",
+      "matched_iogp_rules": [
+        "fire_explosion"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 168
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-170183495",
+      "timestamp": "2026-06-12T04:30:20.745488+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] a co-owner of Intercoastal Concrete was operating a Bomag sheep's foot vibratory roller concrete tamping machine to compact the soil in the driveway of a hillside lot prior to pouring the driveway. He was walking the machine backward when he fell off a 7 ft grade drop. The machine fell on top of him. Employee #[ID] suffered two broken femurs (compound fracture of the left) and groin and back injuries.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-170183495",
+      "raw_sif_p_score": 0.01612362621961378,
+      "calibrated_sif_p_score": 0.01612362621961378,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 292
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202556825",
+      "timestamp": "2026-08-25T14:21:20.745531+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 23 2013 Employee #[ID] an Electrician employed by an electrical contractor was installing lighting fixtures inside a three-story house under construction. He was in the process of wiring a ceiling light on top of a spiral stairwell. The light fixture was 9 feet above the third floor landing and approximately 42 feet above the bottom of the stairwell. Employee #[ID] was working from a 6-foot A-frame ladder that he had set up on the third floor next to the staircase railing. While standing on the ladder he had to reach out 3.5 feet from the staircase railing to access the ceiling light fixture. He lost his balance. Employee #[ID] fell approximately 36 feet to the bottom floor. Emergency services were called. Employee #[ID] was transported to the hospital where he was admitted and treated for body trauma including multiple fractures. He required hospitalization for three weeks. The employer reported this incident to Cal/OSHA on August 23 2013. The subsequent investigation determined that Employee #[ID] was regularly employed by the employer and was not a contract employee.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202556825",
+      "raw_sif_p_score": 0.04471577572336447,
+      "calibrated_sif_p_score": 0.04471577572336447,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 267
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202490157",
+      "timestamp": "2026-07-10T13:27:20.745571+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On May 26 2010 Employee #[ID] of Safeway Services LLP. was dismantling a scaffold that had been erected inside a large boiler which was part of a power generation plant. An unrelated company had used the scaffold to gain access to all areas of the inside walls of the boiler to clean them. The cleaning process produced a large amount of fine dark-colored dust on scaffold parts and working platforms. As the planks and frames of each level of the scaffold had been removed more of the dark-colored dust began to fill the air and settle on the scaffold planks below. By the time all but a couple of planks remained on the second to lowest tier Employee #[ID] repositioned himself on the lowest tier in order to reach up and remove the two planks remaining above him. Since the lowest tier was protected by rails on the outside and the wall of the boiler on the inside Employee # [ID] believed it was no longer necessary to tie off. At this point in the operation there was a lot of activity on the lowest tier with workers moving toward the area where scaffold parts were being handed down. There was also a lot of dust in the air which diminished the available light. Employee #[ID] was walking on the platform planks near the wall while moving to the drop-off point. Unknown to him someone had removed two inside planks from that working platform and he fell through the hole to the floor approximately 20 to 25 feet below. Employee #[ID] was hospitalized due to his fractures.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202490157",
+      "raw_sif_p_score": 0.2316583655762905,
+      "calibrated_sif_p_score": 0.2316583655762905,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 413
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200220283",
+      "timestamp": "2026-07-30T02:55:20.745615+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On March 1 2009 Employee #[ID] of Motors and Controls Corporation was assisting with a material handling operation. During the operation the eye bolts holding the suspended load broke and the load in-turn shifted and broke a support brace. The support brace struck Employee #[ID] in the chest causing him to fall approximately six feet to the pavement. Employee #[ID] was hospitalized and later died from his injuries.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200220283",
+      "raw_sif_p_score": 0.24601641854937856,
+      "calibrated_sif_p_score": 0.24601641854937856,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 305
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202081501",
+      "timestamp": "2026-08-04T09:22:20.745658+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 18 2012 an employee was installing roofing paper on a porch overhang from an aluminum ladder and he came into contact with the 240 volt service drop attached to the building. The employee sustained an electrical shock and was hospitalized for his injury.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202081501",
+      "raw_sif_p_score": 0.2641995805868757,
+      "calibrated_sif_p_score": 0.2641995805868757,
+      "deterministic_override": false,
+      "routing": "hitl_review",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 443
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200032837",
+      "timestamp": "2026-09-08T06:09:20.745742+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On October 3 2006 Employee #[ID] was on the seventh floor of an electric power generation facility cleaning fly ash from a hopper inside a bunker. The hopper which collected fly ash from a boiler had become blocked. Employee #[ID] and two coworkers entered the bunker through a portal and the guardrail was opened so the two coworkers could run a flex hose into the hopper to vacuum the fly ash to a truck. Employee #[ID] was dislodging ash in the hopper the ash engulfed him. He died of asphyxia. The crew was not using safety harnesses nor were any of them attached to lifelines.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200032837",
+      "raw_sif_p_score": 0.27602516264649124,
+      "calibrated_sif_p_score": 0.27602516264649124,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 302
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202088548",
+      "timestamp": "2026-08-09T15:05:20.745793+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On February 19 2008 five employees were on a job site including the job foreman. Employee #[ID] and a coworker were working inside a structure cutting pieces of lumber to use on the west gable end of the building. When trusses began to fall in succession Employee #[ID] was struck by a collapsing member of the structure. He was hospitalized for unspecified fractures. The investigation revealed that the collapse was due to insufficient and incorrectly-installed temporary bracing.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202088548",
+      "raw_sif_p_score": 0.1420427112860747,
+      "calibrated_sif_p_score": 0.1420427112860747,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 431
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201117991",
+      "timestamp": "2026-09-03T05:44:20.745864+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Around 9:30 a.m. on May 28 2004 Employee #[ID] a carpenter was performing a regularly assigned task of bolting taper ties to secure a form to make it ready for the concrete pour. Employee #[ID] was working approximately 12 ft above the ground and moved horizontally from one work point to another. Employee #[ID] fell from the steel form prior to reattaching his positioning device to the form at the next work point. He fractured left and right ankles requiring the surgery. Employee #[ID] was transported to Antelope Valley Hospital and then transferred to Torrance Memorial Hospital where he was hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201117991",
+      "raw_sif_p_score": 0.10484014061994354,
+      "calibrated_sif_p_score": 0.10484014061994354,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 159
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202490520",
+      "timestamp": "2026-07-05T22:03:20.745928+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] was working as a flagger for a construction contractor that was burying fiber optic conduit. She was removing a traffic cone in order to have traffic move through a construction zone. Employee #[ID] still had her stop sign facing the driver of a private vehicle when the driver moved forward unexpectedly. The car struck Employee #[ID] throwing her into a ditch. Employee #[ID] received severe contusions to both legs. She was hospitalized for observation due to her leg injuries and a complaint of back pain. The driver of the vehicle claimed she did not see Employee #[ID] at the side of the highway.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202490520",
+      "raw_sif_p_score": 0.2051023315414219,
+      "calibrated_sif_p_score": 0.2051023315414219,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "traffic"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 379
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202626578",
+      "timestamp": "2026-09-01T17:39:20.745977+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On October 14 2012 Employee #[ID] and other workers were installing structural steel joists and decking to the top of CMU block walls. The joists were not yet welded into place due to heavy rain earlier in the day. When a bundle of decking was placed on top of the joists they began to roll and bend. A supervisor then had a crane move the bundle to a location where another bundle of decking had already been placed on top of the unsecured joists. When the second bundle of decking was lowered to the unsecured joists they rolled and fell onto Employee #[ID]. He was killed.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202626578",
+      "raw_sif_p_score": 0.9380777901503614,
+      "calibrated_sif_p_score": 0.9380777901503614,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 174
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-170830681",
+      "timestamp": "2026-08-04T15:26:20.746018+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] was assigned by his operations manager to start up the crane carrier on an old crane that was being sold. The battery that was in the crane carrier was dead and needed to be jump started. Employee #[ID] hooked the cables of a Quick Start 12-volt heavy duty battery charger up to the terminals of the battery in the engine compartment. He descended from the crane carrier and started up the battery charger. He then went back to the engine compartment and took the hot ground wires from the starter on the carrier motor and struck them together so he could start the motor. The 12-volt battery exploded and covered his face and eyes with sulfuric acid. He was not wearing the provided eye protection. He received caustic burns and was hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-170830681",
+      "raw_sif_p_score": 0.9795764272948948,
+      "calibrated_sif_p_score": 0.9795764272948948,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "chemical_exposure"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 276
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200830750",
+      "timestamp": "2026-06-29T22:48:20.746057+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On November 7 2003 Employee #[ID] a laborer with C.A.C. Industries Inc. was operating a pile driver. The pile driver's boom was picking up a headache ball on the sidewalk when a cable apparently contacted a 7 620 volt overhead power line. Employee #[ID] was electrocuted and two coworkers were injured.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200830750",
+      "raw_sif_p_score": 0.9684830074311727,
+      "calibrated_sif_p_score": 0.9684830074311727,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 257
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200361699",
+      "timestamp": "2026-07-30T22:57:20.746099+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 25 2013 Employee #[ID] a heavy equipment mechanic employed by East Coast Drilling & Blasting Inc. was working at a construction site for a housing subdivision. His company was blasting rock to excavate building sites. A blast dislodged a piece of rock that struck Employee #[ID]. Emergency services were called and Employee #[ID] was transported to the hospital and admitted. It was determined that his leg was severely fractured below the knee. At the time of this report Employee #[ID] was still hospitalized and undergoing numerous surgeries in an attempt to save his leg. The investigation determined that the blast also blew out windows on the excavator. The rock that struck Employee #[ID] was described as \"basketball size.\"",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200361699",
+      "raw_sif_p_score": 0.9310149357433605,
+      "calibrated_sif_p_score": 0.9310149357433605,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 231
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202345492",
+      "timestamp": "2026-07-20T09:51:20.746141+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 27 2005 Employee #[ID] and a coworker were clearing the banks of a river from hurricane debris. They were in a workboat with an outboard motor and were manually picking up the debris. They encountered a wasp nest on a tree limb and were attacked by the wasps. They were attempting to get away from the wasps and took their life jackets off and jumped into the river. Employee #[ID] drowned.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202345492",
+      "raw_sif_p_score": 0.29665850161122176,
+      "calibrated_sif_p_score": 0.29665850161122176,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 131
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201106853",
+      "timestamp": "2026-06-10T19:55:20.746185+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On May 31 2005 Employee #[ID] was performing bolting functions on a steel structure when he slipped and fell 12 ft. He landed on an uneven foundation and suffered major back injuries. Employee #[ID] was wearing fall protection but was not connected at the time of the incident as he was moving his fall protection gear to another section. He was hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201106853",
+      "raw_sif_p_score": 0.106629997795287,
+      "calibrated_sif_p_score": 0.106629997795287,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 219
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202469383",
+      "timestamp": "2026-07-24T08:14:20.746241+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 8:00 a.m. on September 1 2010 Employee #[ID] a roofer and helper was throwing an electrical extension cord over the roof of a one-story single family residence while standing on a 6 ft wide concrete surface walkway between an empty swimming pool and the building. As he threw the electrical cord he lost his balance and fell approximately 8.33 ft into the empty swimming pool. He sustained serious and unspecified injuries that included fractures. Emergency medical personnel were summoned. They arrived and transported him to a medical center where he was hospitalized and received medical attention over nine days.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202469383",
+      "raw_sif_p_score": 0.08708768751444616,
+      "calibrated_sif_p_score": 0.08708768751444616,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 173
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202675054",
+      "timestamp": "2026-07-16T16:55:20.746302+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 13 2013 Employee #[ID] was performing framing activities at a single family residence under construction. Employee #[ID] attempted to attach one beam to another by inserting a lag bolt into the wood with a right angle drill. The drill hung up in the wood resulting in Employee #[ID] losing his balance and falling off of the beam to the ground below. Employee #[ID] was transported to a local hospital for evaluation. Employee #[ID] was then transferred to a larger hospital for treatment of a fractured neck broken ribs and cracked vertebrae. Employee #[ID] underwent surgery and was hospitalized for four days.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202675054",
+      "raw_sif_p_score": 0.19788923366465572,
+      "calibrated_sif_p_score": 0.19788923366465572,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 127
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201925211",
+      "timestamp": "2026-09-06T16:49:20.746350+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 11 2010 Employee #[ID] a newly hired day laborer and Employee #[ID] another day laborer of Rocky Plumbing were working in the excavation located at the intersection of Clifford Road and Steel Road in Alvin Texas. Employee #[ID] went for some water. When he returned he found employee #[ID] slumped over in the excavation. Employee # [ID] along with the job foreman pulled Employee #[ID] out of the excavation and emergency services were called. Employee #[ID] was transported to Clear Lake Regional Medical Center where he later died. During interviews with Employee #[ID] stated that there was no atmospheric testing or continuous monitoring while they were inside the excavation. The employer admitted that he did not conduct any testing of the area. He usually had an independent contractor conduct the testing for him but apparently that had not been done at this site. The employees had not received any training in excavation work or hazardous atmospheres. The employer does not have any safety programs in place for his company. CSHO went to the site and collected air samples from the man hole that was put in by the employer and found that it did contain some H2S and an elevated LEL. The Medical Examiner's office ruled that Employee #[ID] died from Atherosclerotic and hypertensive cardiovascular disease. The Harris County Medical Examiner's Office did not test for H2S.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201925211",
+      "raw_sif_p_score": 0.27247825157823247,
+      "calibrated_sif_p_score": 0.27247825157823247,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "chemical_exposure"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 179
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202587747",
+      "timestamp": "2026-06-30T23:16:20.746408+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Sometime before 1:30 p.m. on May 11 2012 an employee was working as a supervisor for Bayview Environmental Services Inc. The site of the incident was the south-facing wall of the U.C. Berkeley Memorial Stadium near Canyon Road in Berkeley California. The stadium was surrounded by scaffolding extending below grade to the top of the stadium. The scaffolding was encased in opaque white plastic sheeting. The worker was on a work platform above an excavation. He fell approximately 7 feet 11 inches (2.4 meters) to the floor of the excavation. He sustained strains and sprains to his back. The inboard edge of the work platform from which the employee fell was approximately 20.5 inches (0.52 meters) horizontally from the surface of the stadium. The Berkeley Fire Department had to remove a large section of the plastic sheeting in order to more quickly gain access to the injured employee. He was lying at the foot of the scaffolding in an excavation approximately 68 inches (1.7 meters) below grade. The injured employee was taken via ambulance to Highland Hospital in Oakland CA where he was hospitalized for less than 24 hours for treatment. During the initial inspection no missing or upset scaffolding planks were observed and all guardrails were present.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202587747",
+      "raw_sif_p_score": 0.2733173003948702,
+      "calibrated_sif_p_score": 0.2733173003948702,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 285
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202587895",
+      "timestamp": "2026-07-07T02:58:20.746472+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 8:30 a.m. on October 26 2012 Employee #[ID] of Bay Air Systems Inc. was working at a multiemployer construction site a 24 Hour Fitness building. He and three coworkers were on the roof and laying out huge HVAC machinery. The machinery was being lifted by helicopter from the ground to the roof. According to Employee #[ID] he was standing on the corner end of the building and looking up at the helicopter waiting for the machinery to be lowered. He moved sideways. He later reported that as he moved he felt he was stepping onto the steel cover of a 24-inch square opening in the roof. He fell through the opening to concrete below. He was transported to Eden Medical Center in Castro Valley where he was admitted and treated for five days for serious injuries. His injuries included but were not limited to fractured ribs fractured collar bone and fractured spine.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202587895",
+      "raw_sif_p_score": 0.2519857353714144,
+      "calibrated_sif_p_score": 0.2519857353714144,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 415
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201045127",
+      "timestamp": "2026-07-20T08:11:20.746522+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On December 6 2013 Employee #[ID] employed by a construction contractor that specialized in home remodeling was assigned to go to a house and clean the windows walls and fireplace. Based on a subsequent reconstruction of the event Employee #[ID] attempted to use an extension ladder to reach the upper portion of a wall located above the living room stairwell his intention being to clean dust off the wall with a water-soaked sponge. The extension ladder was extended to approximately 17 feet and was supported against the wall with its padded feet against the tile floor and the top of the ladder approximately 14 feet above the floor. The ladder was at an approximate angle of 59 degrees. Evidence suggested that Employee #[ID] was climbing the ladder when the ladder slid out from underneath him. The ladder appears to have slid vertically down the wall and then horizontally down the stair railing causing Employee #[ID] to fall from an unknown height. He landed on his head and came to rest with his left side facing south lying longitudinal with his head to the east and his feet to the west. Emergency services were called and Employee #[ID] was rushed to the hospital where doctors pronounced him brain dead but technically alive. According to the subsequent investigation report the charge nurse on duty stated that Employee #[ID] was given a one percent chance to survive. At 3:37 a.m. on December 8 2013 Employee #[ID] was pronounced dead from trauma to the head that caused bleeding in the brain.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201045127",
+      "raw_sif_p_score": 0.2606994020486825,
+      "calibrated_sif_p_score": 0.2606994020486825,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 196
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200997658",
+      "timestamp": "2026-07-30T16:16:20.746574+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 1 2009 an employee was laying across the spreader bar of a trench box while adjusting the hook on the excavator to receive the hoist chain used to move the 36-in. concrete pipe. The operator moved the arm to reconnect to chain pinning and crushing the employee's head between the excavator arm and spreader bar. The employee later died after being taken off life support June 10 2009.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200997658",
+      "raw_sif_p_score": 0.11959783278468214,
+      "calibrated_sif_p_score": 0.11959783278468214,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "caught_in_between"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 377
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201623766",
+      "timestamp": "2026-07-16T14:12:20.746617+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 14 2013 Employee #[ID] was struck and killed by a falling highway board sign.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201623766",
+      "raw_sif_p_score": 0.8744867166132829,
+      "calibrated_sif_p_score": 0.8744867166132829,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 222
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202448510",
+      "timestamp": "2026-07-18T05:09:20.746691+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On May 14 2008 Employee #[ID] a plumber at Ddh Apple Valley Construction Inc was struck by a backhoe bucket and suffered non-serious injuries such as bruising contusion and abrasions.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202448510",
+      "raw_sif_p_score": 0.08267086142644732,
+      "calibrated_sif_p_score": 0.08267086142644732,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 332
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-724955",
+      "timestamp": "2026-07-01T09:10:20.746751+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 7:45 a.m. on November 9 1995 Employees #1 and #2 were dismantling a scaffold that was approximately 12 ft above an open 45 ft by 60 ft excavation. Employee #[ID] allegedly fell into the pit on the west side. Employee #[ID] ran to the ladder on the east side of the pit to help. He collapsed at the bottom of the pit by the ladder. Employees #3 and #4 also went into the pit by the east side ladder. Employee #[ID] collapsed behind the ladder on a dirt mound about 3 to 5 ft above the bottom of the pit. While descending the ladder Employee #[ID] began to feel lightheaded and weak in the knees and was pulled out of the pit by two Reynolds employees. Two coworkers who were fire brigade members also responded to the emergency. One descended the ladder without SCBA and collapsed at the bottom of the pit on top of Employee #[ID]. The other coworker also started down the ladder without SCBA began to feel lightheaded and weak in the knees and was pulled out by Reynolds employees. Employees #1 through #3 died of asphyxia and Employee #[ID] was hospitalized for approximately one month. Argon gas had been used instead of compressed air to operate a pump that removed water from the pit.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-724955",
+      "raw_sif_p_score": 0.20846786745431722,
+      "calibrated_sif_p_score": 0.20846786745431722,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "chemical_exposure"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 203
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201331246",
+      "timestamp": "2026-06-25T17:09:20.746817+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On November 9 2010 Employees #1 and #2 were working on a 10 000-gallon tank that contained a concentration of vinyl fluoride. The employees were performing hot work and they were electric arc welding. The tank exploded and killed Employee #[ID] and injured Employee #[ID].",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201331246",
+      "raw_sif_p_score": 0.8460375874457011,
+      "calibrated_sif_p_score": 0.8460375874457011,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "fire_explosion"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 226
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200776334",
+      "timestamp": "2026-08-22T12:03:20.746860+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On January 28 2011 an employee was assigned to install a new flue liner for an existing boiler. The employee went up an extension ladder to the roof. While walking over to the chimney he fell off the roof and was injured on a picket fence below.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200776334",
+      "raw_sif_p_score": 0.019253516020150047,
+      "calibrated_sif_p_score": 0.019253516020150047,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 379
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200713238",
+      "timestamp": "2026-06-10T19:28:20.746916+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 8 2007 Employee #[ID] was changing out a ballast in a light fixture when he was electrocuted.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200713238",
+      "raw_sif_p_score": 0.8465866745853315,
+      "calibrated_sif_p_score": 0.8465866745853315,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 345
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-14340376",
+      "timestamp": "2026-06-20T18:51:20.746963+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] was working on a bridge tower that had been damaged when rammed by a ship. He was burning off bolts so that the damaged steel could be removed and replaced with new steel. Evidence reveals that he had completed the job and was moving to another position when he fell approximately 60 ft to the water. While falling Employee #[ID] struck against the concrete counterweight rolled off the counterweight to the concrete foot of the tower and then bounced off the footing and fell onto the fender system from which he fell feet first into the water. The weight of his safety belt kept him under water and he drowned. He was not wearing a life vest.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-14340376",
+      "raw_sif_p_score": 0.29827420878643945,
+      "calibrated_sif_p_score": 0.29827420878643945,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 122
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-171059405",
+      "timestamp": "2026-07-18T06:11:20.747027+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "An employer lifted an employee in the bucket of a backhoe to untangle a Mylar balloon from an overhead power line. The bucket contacted the power line. The employee received an electric shock and fell from the bucket to the ground 3 meters below. He was hospitalized for his injuries.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-171059405",
+      "raw_sif_p_score": 0.9108840037731271,
+      "calibrated_sif_p_score": 0.9108840037731271,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "electrocution"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 356
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202657862",
+      "timestamp": "2026-09-02T15:50:20.747072+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On March 12 2013 Employee #[ID] and Coworker #1 electricians employed by an electrical company were working at an aerospace facility. They were in an aerial lift a Genie Boom Z 40/23N model year 2011 serial number [REDACTED_ID]. The lift was elevating them to install electrical conduit at the facility. The lift was situated approximately 1 foot from the edge of a pit that was next to the facility. The pit measured approximately 5 feet to 8 feet deep. The lift moved forward and fell into the pit. Employee #[ID] was injured. He was transported to the hospital admitted and treated for a fractured ankle. The investigation determined that other employees were working inside the facility. The investigation was unable to determine the circumstances surrounding the lift's moving and falling into the pit.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202657862",
+      "raw_sif_p_score": 0.12642444997138613,
+      "calibrated_sif_p_score": 0.12642444997138613,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 138
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-14514400",
+      "timestamp": "2026-07-21T09:07:20.747127+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "After complaining of chest pain for some time Employee #[ID] collapsed and died while digging a shallow hole in a petroleum fuel booster pumping station. The cause of death pulmonary edema was not discovered by pathologists for more than three months following the death. Toxicology tests were negative.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-14514400",
+      "raw_sif_p_score": 0.21994430377720442,
+      "calibrated_sif_p_score": 0.21994430377720442,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 436
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201128675",
+      "timestamp": "2026-06-13T00:30:20.747177+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 12:50 p.m. on November 14 2011 Employee #[ID] and coworkers were involved in a hydrostatic testing project which required the excavation of a street to remove and replace faulty high-pressure valves. A request was given to retrieve an end shore jack in the excavation site. Employee #[ID] choked a lifting strap around the middle of the end shore jack where a hook on a backhoe was to be connected. A coworker operated the backhoe. As Employee #[ID] positioned the hook on the strap the backhoe operator moved the hoist up which suddenly jerked the hook and the strap upward. Employee #[ID]'s left thumb was caught between the hook and the strap amputating the tip of his thumb. The backhoe operator reported that he could not clearly see Employee #[ID]; however other employees stated otherwise. Further one of the employees stated that Employee #[ID] was standing on the pipe above the jack being removed so the top of his head was at the street level. After the incident Employee #[ID] was transported to a medical center where he underwent procedures for finger amputation and was hospitalized for postoperative care.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201128675",
+      "raw_sif_p_score": 0.8691661197486438,
+      "calibrated_sif_p_score": 0.8691661197486438,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "caught_in_between"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 225
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200554699",
+      "timestamp": "2026-09-03T06:43:20.747244+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On October 12 2006 Employee #[ID] a towboat captain and Employees #2 through #5 all construction laborers were on a tow vessel that was pushing two construction barges. One of the spud legs on the barge suddenly deployed and struck a natural gas pipeline causing an explosion and fire. Employees #1 through #5 were killed.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200554699",
+      "raw_sif_p_score": 0.07338224198079664,
+      "calibrated_sif_p_score": 0.07338224198079664,
+      "deterministic_override": false,
+      "routing": "hitl_review",
+      "matched_iogp_rules": [
+        "fire_explosion"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 317
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201180189",
+      "timestamp": "2026-07-27T10:45:20.747291+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 7:00 a.m. on July 14 1999 Employee #[ID] a supervisor was cutting a 0.75-inch piece of plywood with a Skilsaw saw (Model number HD67737). The saw kicked back and amputated the third forth and fifth fingers of his left hand. Employee #[ID] was hospitalized to treat the amputations. Prior to the accident other employees examined the Skilsaw use by Employee #[ID]. The employees discovered that the saw guard was defective. It appeared the guard was frozen up by cement or dried sludge and could not protect Employee #[ID] from the blade.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201180189",
+      "raw_sif_p_score": 0.19344144887211956,
+      "calibrated_sif_p_score": 0.19344144887211956,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 317
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202654919",
+      "timestamp": "2026-08-10T20:43:20.747333+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 9:30 a.m. on September 3 2013 Employee # [ID] was heating hot asphalt oil spray wand using a propane torch. During the heating of spray wand a coworker attempted to reposition the wand and accidentally pressed the nozzle control handle that blow out hot oil and diesel. A flash fire occurred and caught Employee #[ID]'s clothing on fire. The coworker responded to the accident and drove the employee to an area hospital where he was treated for second degree burns to his neck and arms. Employee #[ID] remained hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202654919",
+      "raw_sif_p_score": 0.7476234805326794,
+      "calibrated_sif_p_score": 0.7476234805326794,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "fire_explosion"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 318
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202691747",
+      "timestamp": "2026-06-23T20:11:20.747375+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On July 30 2013 Employee #[ID] was operating a DitchWitch SK350 rubber tracked Skid Steer with a loader bucket attachment to grade dirt underneath a bridge. As the loaded bucket was raised and the skid steer was in motion the front end of the skid steer tipped forward and the back end went up. Employee #[ID] was standing on the skid steer's stand-on platform and had approximately 4.67 ft of space to stand upright. He became pinned between the controls panel on the skidder and the bridge when the skid steers back end lifted. Employee #[ID] sustained traumatic crushing injuries and died.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202691747",
+      "raw_sif_p_score": 0.8579450839848157,
+      "calibrated_sif_p_score": 0.8579450839848157,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "traffic"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 188
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202654620",
+      "timestamp": "2026-07-26T15:36:20.747433+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On June 19 2013 Employee #[ID] employed by a construction company was doing roofing work on a new home construction. He was installing roofing felt paper. He walked backwards and fell off the roof. He landed on the ground a distance of 12 to 14 feet. Emergency services were called. Employee #[ID] was transported to the hospital where he was treated for a fracture of the left arm and a scrape to the left side of his face. He was not hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202654620",
+      "raw_sif_p_score": 0.20550864200856692,
+      "calibrated_sif_p_score": 0.20550864200856692,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 159
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202551107",
+      "timestamp": "2026-06-24T16:07:20.747497+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On July 29 2009 Employee #[ID] and a coworker working on the platform of a JLG Scissorlift Model Number 330CRT Serial Number 200078542 were installing metal warehouse storage racks. For some reason the scissorlift would not lift up compelling another employee the foreman to use a forklift to assist the work platform. Once the forklift was pulled from the work platform the scissorlift platform fell approximately 6 ft to 7 ft to the ground causing the metal storage rack materials to bounce off the platform and strike Employee #[ID] and his coworker. Employee #[ID] sustained a fracture to his right ankle and the coworker required first aid (not specified). Employee #[ID] was hospitalized.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202551107",
+      "raw_sif_p_score": 0.0684407583983393,
+      "calibrated_sif_p_score": 0.0684407583983393,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 271
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200553196",
+      "timestamp": "2026-06-14T17:59:20.747560+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On December 22 2003 Employee #[ID] and coworkers were unloading concrete pilings weighing 53 000 lbs from truck/trailers using a crane. While unloading the second piling the crane tipped causing the main pendant lines that were supporting the boom to fail. The boom fell to the ground and struck Employee #[ID] on the head. Employee #[ID] was pronounced dead.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200553196",
+      "raw_sif_p_score": 0.2064593553664948,
+      "calibrated_sif_p_score": 0.2064593553664948,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 178
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-315952622",
+      "timestamp": "2026-08-20T22:02:20.747611+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 7:00 p.m. on February 6 2012 Employee #[ID] was working for his employer a hazardous waste removal and tank cleaning company. They had a permit confined space entry program. The company had been contracted to clean coal tar tanks at a marine terminal. At the terminal coal tar was pumped from ocean-going tankers and imported into large atmospheric storage tanks. The coal tar was then distributed via truck. They did not refine or change the coal tar in any way. Employee #[ID] was working on a team with three coworkers and the team was assigned the task of hydro-blasting tank #68 a tank measuring approximately 30 feet by 30 feet. Employee #[ID] was using a hydro-blasting wand and all the safety features on the blasting gun were functioning properly. It was fitted with two dead-man triggers one for water and the other for air pressure. Employee #[ID] was wearing metatarsal protection but his protective boots had gotten wet earlier in the day and he took them off. Employee #[ID] was wearing regular rubber boots while operating the hydro-blaster. Employee #[ID] stepped over some pipes on the floor of the tank and accidentally blasted the side of his left foot. The pressurized water cut through the rubber material of the boot and severely lacerated his foot. Employee #[ID] was sent to the emergency room for treatment and was kept overnight. The wound became infected and Employee #[ID] spent additional days in the hospital for treatment. The employer provided all employees with full metatarsal blasting boots and the employees were required to wear them. Each employee was required to read and sign a statement acknowledging the need to wear the special boots for all hydro-blasting operations. Employee #[ID] signed the agreement. In addition to the written agreement the company conducted hands-on operating training with all new employees in a simulated waste tank demonstrating the safe operation of hydro-blasting equipment. In addition the employer gave each worker a wallet-sized card describing the special medical treatment procedures associated with water-jet injuries. A copy of the card was given to the emergency room doctor treating Employee #[ID].",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-315952622",
+      "raw_sif_p_score": 0.10204980444495003,
+      "calibrated_sif_p_score": 0.10204980444495003,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 385
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-786673",
+      "timestamp": "2026-06-12T05:56:20.747654+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At about 8 a.m. on March 6 1990 Employees #1 #2 and #3 were working on a steel cage made from rebar. The cage was the foundation for a concrete column for a bridge support. It was set into a cofferdam and supported by 3/8 in. guys at each of four corners. One guy failed and Employees #1 #2 and #3 fell approximately 20 ft to the bottom of the cofferdam. None of the employees was seriously injured.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-786673",
+      "raw_sif_p_score": 0.015123797780633544,
+      "calibrated_sif_p_score": 0.015123797780633544,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 384
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201022423",
+      "timestamp": "2026-07-18T13:47:20.747698+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At 12:30 p.m. on July 20 2009 Employee #[ID] with Mainstay Business Solutions was grinding concrete with a 4 in. Bosch disc grinder (Model Number 1375A) when the disc shattered. He was hospitalized for a lacerated the left index finger. This employer specialized in waterproofing and was repairing cracks at a city wastewater treatment plant.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201022423",
+      "raw_sif_p_score": 0.7055323553941285,
+      "calibrated_sif_p_score": 0.7055323553941285,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 307
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-201079639",
+      "timestamp": "2026-09-08T08:39:20.747762+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 10:00 a.m. on June 5 2013 Employee #[ID] of Schuff Steel Company sustained serious injuries after being struck by a 35 foot steel beam. Employee #[ID] suffered a thigh laceration and a foot amputation. Employee #[ID] was rigging a 35 foot steel column beam weighing over 2 500 lbs. for a vertical lift by a Liebherr LR1200 crane using a 12 ton sheave (hickey) with two shackles and round pull pins. The round pull pins became disconnected from the shackle causing the end of the beam being hoisted to fall and strike Employee #[ID]. The pull pins were not secured with safety pins or cotter pins to prevent unintentional displacement of the load.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-201079639",
+      "raw_sif_p_score": 0.843784249063813,
+      "calibrated_sif_p_score": 0.843784249063813,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_falling_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 315
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200374809",
+      "timestamp": "2026-06-10T23:34:20.747810+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On July 13 2009 Employee #[ID] was installing a lightning rod on a roof. He slipped and rolled off of the roof. He fell more than 20 ft to the ground. He was hospitalized for a concussion and head injuries which were not further specified. He died 5 days later.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200374809",
+      "raw_sif_p_score": 0.2321632290847165,
+      "calibrated_sif_p_score": 0.2321632290847165,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 355
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202674701",
+      "timestamp": "2026-08-23T09:52:20.747876+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 4:00 p.m. on May 9 2013 Employee #[ID] of Arrow Asphalt Paving was working on a project to pave and chip seal sections of a private airstrip used by a crop dusting service in Biggs CA. He was operating a push-type blower to remove loose gravel dust and debris from the asphalt as the project neared completion. Employee #[ID] was in the center of the runway working alone approximately 300 feet from the end that led to the plane loading area and hangars. A pilot flying an airplane Schweizer Aircraft Corporation model [REDACTED_ID] B approached the airstrip from the opposite end and landed. As the pilot taxied the plane toward the hangar the plane's propeller struck Employee #[ID] in the head and decapitated him. This fatality was reported to Cal/OSHA's Sacramento District Office by the Butte County Sheriff's Department on May 9 2013. The employer failed to report the event. Cal/OSHA's investigation determined that because of the plane's design (tail dragger) there was limited pilot visibility looking forward and no visibility below the engine compartment (nose) while taxiing. Preliminary reports indicated there were no spotters. Employee #[ID] was not wearing a safety vest and he may have been hearing impaired.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202674701",
+      "raw_sif_p_score": 0.14408909586394,
+      "calibrated_sif_p_score": 0.14408909586394,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 357
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-170384283",
+      "timestamp": "2026-06-23T20:36:20.747927+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] was operating a Daewoo excavator with a ram attachment for breaking concrete. He was on an 11 ft 6 in. wide ramp trying to break out the refractory wall of a blast furnace. When the ram broke through the wall hot coke taconite coal dust and superheated steam rolled outward and engulfed the excavator and Employee #[ID]. He was burned to death. Employee #[ID] who was in the area was treated at the plant's infirmary for breathing difficulties.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-170384283",
+      "raw_sif_p_score": 0.29832096025628374,
+      "calibrated_sif_p_score": 0.29832096025628374,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "extreme_temperature"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 179
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-14271027",
+      "timestamp": "2026-07-14T08:03:20.747999+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "EMPLOYEES WERE IN THE PROCESS OF POURING A CONCRETE FOUNDATION WALL. THEY WERE WORKING FROM A WORK PLATFORM COVERING AN ELEVATOR SHAFT. AS A HYDRAULIC CRANE WAS IN THE PROCESS OF SWINGING A TWO (2) YARD BUCKET WHICH CONTAINED APPROXIMATELY ONE (1) YARD OF CONCRETE OVER THE PLATFORM THE HOISTING LINE BROKE. THE BUCKET SMASHED THROUGH THE WORK PLATFORM SENDING TWO (2) MEN AND THE BUCKET TO THE GROUND APPROXIMATELY 24' BELOW. EMPLOYEE #[ID] LANDED IN THE ELEVATOR PIT ALONG SIDE THE BUCKET AND WAS FATALLY INJURED. HE SUSTAINED MULTIPLE FRACTURES AND INTERNAL INJURIES. EMPLOYEE #[ID] LANDED ON THE GROUND AND WAS HOSPITALIZED WITH SEVERAL FRACTURED RIBS AND HEAD LACERATIONS. THE WORK PLATFORM WAS APPROXIMATELY 24 FEET HIGH. A GROVE CRANE WAS USED.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-14271027",
+      "raw_sif_p_score": 0.05736373507995824,
+      "calibrated_sif_p_score": 0.05736373507995824,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 365
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200775971",
+      "timestamp": "2026-07-12T03:50:20.748062+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On January 26 2010 Employee #[ID] was installing a mock window in an area of a structure that had recently undergone demolition work by another contractor. He was struck by falling brick from the collapse of an archway that had been left unsupported. Employee #[ID] was hospitalized for unspecified fractures.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200775971",
+      "raw_sif_p_score": 0.875589528526779,
+      "calibrated_sif_p_score": 0.875589528526779,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "collapse_of_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 157
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200850469",
+      "timestamp": "2026-09-03T20:53:20.748110+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At 12:15 p.m. during the second week of construction of a 600 ft deep third water tunnel for New York City Employees #1 and #2 were brakemen on a train that had just unloaded a concrete load at the construction site. While returning to the loading area their train collided with an oncoming fully loaded train at approximately the 4 270 ft mark after passing the California switching device at 6 000 ft. Employee #[ID] was removed to Long Island College Hospital where he was pronounced dead at 2:25 p.m. Employee #[ID] was hospitalized at Bellevue with a fractured leg. Employee #[ID] the operator of the other train suffered a minor knee injury but did not require hospitalization. This job was being done in two phases: the first consisted of digging and debris removal and the second consisted of pouring concrete. The tunnel was approximately 29 200 ft long and had a single lane track for the majority of the distance. There were two areas both approximately 100 ft long where there were two lanes and these areas at the 6 000 ft mark and the 25 000 ft mark were used for trains to pass one another. The method used to control the train traffic near the double lane areas was a California switching device.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200850469",
+      "raw_sif_p_score": 0.23055001964862756,
+      "calibrated_sif_p_score": 0.23055001964862756,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "traffic"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 399
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202675302",
+      "timestamp": "2026-08-01T19:11:20.748175+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 1 2013 Employee #[ID] a 49-year-old male truck driver and temporary worker with Israel & Orlando De La Cruz Dba North Cal Hauling were at a new home residential construction site cleaning up construction debris. Employee #[ID] placed a 2 in. by 12 in. by 10 ft long plank he and another employee were going to use as a walkway ramp to go from ground level up to the bed at the rear of a 20 ft long cargo truck they were using to haul trash. After using the plank as a foot ramp several times the unsecured and unanchored plank slipped from the truck deck and fell to the ground (approximately 52 in.) with Employee #[ID] on it. Employee #[ID] suffered a compound fracture to his left ankle requiring surgery and a three day stay in Mercy San Juan Hospital.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202675302",
+      "raw_sif_p_score": 0.24012955556566093,
+      "calibrated_sif_p_score": 0.24012955556566093,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 309
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202718714",
+      "timestamp": "2026-06-20T12:37:20.748220+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "At approximately 10:00 a.m. on September 16 2013 Employee #[ID] of Demo Unlimited Inc. was conducting flagging activity at a residential building demolition project for which his employer had been contracted. He was directing truckers to various locations on the property to dump their dirt. Employee #[ID] had just directed one of the drivers toward the dump/fill location. As Employee #[ID] walked to get a drink of water the rear trailer of the vehicle swerved and struck him. Emergency services were called and Employee #[ID] was transported to the hospital where he was admitted and treated for multiple broken ribs a ruptured spleen and a fractured left shoulder blade. He remained hospitalized for approximately two months. At approximately 10:45 a.m. on September 16 2013 the employer notified Cal/OSHA of this event. The subsequent investigation revealed that Employee #[ID] had been employed by Demo Unlimited Inc. for approximately five years as a construction laborer.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202718714",
+      "raw_sif_p_score": 0.10487350116427338,
+      "calibrated_sif_p_score": 0.10487350116427338,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "traffic"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 376
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200203479",
+      "timestamp": "2026-08-02T18:45:20.748262+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "Employee #[ID] and several coworkers were laying sod at a stormwater retention area at the back portion of the Walmart Fulfillment Center property. Employee #[ID] had stated to his supervisor as well as his coworkers that he did not feel well that day and took several extra breaks to rest. Later in the day Employee #[ID] went to rest in the shade. After ten minutes Employee #[ID] was found unconscious. Emergency medical personnel took him to a medical center however Employee #[ID] did not respond to medical treatment and was pronounced dead shortly thereafter. The autopsy report gives the cause of death as \"toxic effects of methamphetamine\". The autopsy report makes no reference to any work conditions that may have contributed to the fatality.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200203479",
+      "raw_sif_p_score": 0.05956603774855744,
+      "calibrated_sif_p_score": 0.05956603774855744,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 220
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202633855",
+      "timestamp": "2026-09-04T21:10:20.748303+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On August 23 2011 Employee #[ID] was working for his employer an asphalt-paving contractor. The contractor was installing handicap access ramps and was conducting asphalt-patching activities. The temperature was approximately 110 degrees Fahrenheit. Employee #[ID] was assigned the job of using a shovel to prepare the site for asphalt pouring. Employee #[ID] and his coworkers completed asphalt-paving activities and began cleaning up the worksite. Coworker #1 noticed that Employee #[ID] was walking sluggishly and told Employee #[ID] to go and sit in the pickup truck. Employee #[ID] sat in the idling pickup truck with the air conditioning running and Coworker #1 brought Employee #[ID] a sports drink and some fruit. Coworker #2 was working a short distance away and he saw Employee #[ID] get out of the truck and walk towards him. Coworkers #1 and #2 walked to the truck at this time and they both told Employee #[ID] that they were almost finished and would be leaving soon. Coworkers #1 and #2 walked away and Employee #[ID] collapsed. Coworkers #1 and #2 ran to Employee #[ID] to help and Coworker #1 called Emergency Services. Coworker #1 placed ice on Employee #[ID] who began to speak incoherently and vomited. Employee #[ID] then became nonresponsive and Emergency Services were called again. Paramedics arrived and transported Employee #[ID] to Eisenhower Medical Center in Rancho Mirage CA. Employee #[ID] was pronounced dead at 1:43 p.m. The cause of death was determined by the coroner to be not heat-related; therefore this incident is classified as nonoccupational. The actual cause of death was not specified. No violations of the California Code of Regulations Title 8 were determined to have contributed to the employee's death.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202633855",
+      "raw_sif_p_score": 0.07606188105532309,
+      "calibrated_sif_p_score": 0.07606188105532309,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "other"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 149
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-202353942",
+      "timestamp": "2026-07-28T07:32:20.748369+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On April 22 2004 Employee #[ID] a foreman with a roofing crew was preparing to remove and replace the existing roofing system on a 147-ft by 50-ft structure. He began to sweep the gravel ballast from the roof using a power broom before any fall protection was provided. While he was making a pass with his back to the edge of the roof the machine's drive wheel belt came off the pulleys. The foreman was pushed back and fell 21.5 ft to a paved area. He was hospitalized for fractured ankles.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-202353942",
+      "raw_sif_p_score": 0.1781838208204268,
+      "calibrated_sif_p_score": 0.1781838208204268,
+      "deterministic_override": false,
+      "routing": "standard_log",
+      "matched_iogp_rules": [
+        "falls"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 197
+    }
+  },
+  {
+    "incident": {
+      "log_id": "LOG-200262806",
+      "timestamp": "2026-07-05T03:48:20.748431+00:00",
+      "asset_id": "Not available",
+      "asset_type": "Not available",
+      "raw_narrative": "On April 8 2006 Employee #[ID] was operating an American Auger Boring Machine. When the auger became stuck Employee #[ID] tried to extract the auger by engaging it in reverse. He was ejected when the machine tipped. He was killed when the machine righted itself and rolled over.",
+      "spans": []
+    },
+    "inference": {
+      "log_id": "LOG-200262806",
+      "raw_sif_p_score": 0.824722240312372,
+      "calibrated_sif_p_score": 0.824722240312372,
+      "deterministic_override": false,
+      "routing": "critical_escalation",
+      "matched_iogp_rules": [
+        "struck_by_moving_object"
+      ],
+      "triad": {
+        "activity": null,
+        "asset_location": null,
+        "failed_barrier": null
+      },
+      "latency_ms": 284
+    }
+  }
+]
