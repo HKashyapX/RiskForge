@@ -145,6 +145,61 @@ class TestCORSConfiguration:
         assert resp.headers.get("access-control-allow-origin") == "https://a.com"
 
 
+    @pytest.mark.parametrize("environment", ["staging", "production"])
+    def test_secure_environment_disables_cors_by_default(
+        self, monkeypatch: pytest.MonkeyPatch, environment: str
+    ) -> None:
+        monkeypatch.setenv("RISKFORGE_ENV", environment)
+        monkeypatch.delenv("RISKFORGE_CORS_ORIGINS", raising=False)
+        client = TestClient(create_app(_noop_application(), _noop_readiness()))
+
+        response = client.options(
+            "/health",
+            headers={
+                "Origin": "https://untrusted.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+        assert "access-control-allow-origin" not in response.headers
+
+    @pytest.mark.parametrize("environment", ["staging", "production"])
+    def test_secure_environment_rejects_wildcard_cors(
+        self, monkeypatch: pytest.MonkeyPatch, environment: str
+    ) -> None:
+        monkeypatch.setenv("RISKFORGE_ENV", environment)
+
+        with pytest.raises(ValueError, match="wildcard CORS is forbidden"):
+            create_app(
+                _noop_application(),
+                _noop_readiness(),
+                cors_origins=["*"],
+            )
+
+    def test_development_wildcard_does_not_allow_credentials(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("RISKFORGE_ENV", "development")
+        client = TestClient(
+            create_app(
+                _noop_application(),
+                _noop_readiness(),
+                cors_origins=["*"],
+            )
+        )
+
+        response = client.options(
+            "/health",
+            headers={
+                "Origin": "https://example.test",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+        assert response.headers["access-control-allow-origin"] == "*"
+        assert response.headers.get("access-control-allow-credentials") != "true"
+
+
 # ---------------------------------------------------------------------------
 # Metrics Endpoint Tests
 # ---------------------------------------------------------------------------
