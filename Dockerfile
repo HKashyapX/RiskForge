@@ -40,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 USER riskforge
 
-CMD ["uvicorn", "riskforge.api:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "riskforge.runtime.demo:create_demo_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
