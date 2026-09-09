@@ -1,4 +1,4 @@
-﻿import pandas as pd
+import pandas as pd
 from pathlib import Path
 
 INPUT = Path(r"C:\data\processed\iogp_pilot_review.csv")
