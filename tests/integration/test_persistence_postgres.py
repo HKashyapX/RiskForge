@@ -71,7 +71,9 @@ def pool() -> Any:
         min_pool_size=1,
         max_pool_size=3,
     )
-    run_migrations(dsn=config.dsn())
+    # ``PostgresConfig.dsn()`` is safe for display and therefore redacts the
+    # password.  Migrations consume the matching environment directly.
+    run_migrations()
     p = PostgresConnectionPool(config=config)
     # Truncate all tables for test isolation
     conn = p.getconn()
