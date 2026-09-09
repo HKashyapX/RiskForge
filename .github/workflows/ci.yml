@@ -105,6 +105,11 @@ jobs:
           PYTHONPATH: src
         run: python -m pytest -q tests/integration
 
+      - name: Run architecture tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/architecture
+
       - name: Compile source tree
         run: python -m compileall -q src
 

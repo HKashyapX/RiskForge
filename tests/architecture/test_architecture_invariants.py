@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import ast
 import pathlib
-import textwrap
 
 import pytest
 
@@ -52,9 +51,8 @@ def _extract_imports(filepath: pathlib.Path) -> list[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 imports.append(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imports.append(node.module.split(".")[0])
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imports.append(node.module.split(".")[0])
     return imports
 
 
@@ -104,7 +102,7 @@ def test_no_external_service_urls(filepath: pathlib.Path) -> None:
         stripped = line.strip()
         # Skip comments and docstrings (rough heuristic: lines starting with # or
         # inside triple-quoted strings are ok for documentation purposes)
-        if stripped.startswith("#") or stripped.startswith('"') or stripped.startswith("'"):
+        if stripped.startswith(("#", '"', "'")):
             continue
         for pattern in _EXTERNAL_URL_PATTERNS:
             if pattern in stripped:

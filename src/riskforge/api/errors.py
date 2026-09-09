@@ -26,6 +26,8 @@ from riskforge.authentication.exceptions import (
 
 class ErrorCode(str, Enum):
     INVALID_REQUEST = "invalid_request"
+    REQUEST_TOO_LARGE = "request_too_large"
+    REQUEST_TIMEOUT = "request_timeout"
     AUTHENTICATION_REQUIRED = "authentication_required"
     AUTHENTICATION_UNAVAILABLE = "authentication_unavailable"
     DUPLICATE_LOG_ID = "duplicate_log_id"

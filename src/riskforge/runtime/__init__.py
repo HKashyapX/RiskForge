@@ -1,6 +1,7 @@
 """Runtime configuration, lifecycle, and dependency-composition contracts."""
 
 from riskforge.runtime.api_adapter import RuntimeReadinessProvider
+from riskforge.runtime.asgi import create_managed_app
 from riskforge.runtime.contracts import (
     ComponentReadiness,
     DependencyComposer,
@@ -41,4 +42,5 @@ __all__ = [
     "RuntimeStateError",
     "RuntimeStatus",
     "compose_readiness",
+    "create_managed_app",
 ]
