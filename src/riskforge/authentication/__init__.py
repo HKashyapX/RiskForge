@@ -11,8 +11,14 @@ protocol.
 
 from riskforge.authentication.exceptions import (
     AuthenticationError,
+    ExpiredCredentialError,
+    InvalidAudienceError,
     InvalidCredentialsError,
+    InvalidIssuerError,
+    InvalidSignatureError,
+    MalformedCredentialError,
     MissingCredentialsError,
+    UnknownKeyError,
 )
 from riskforge.authentication.principal import Principal
 from riskforge.authentication.protocols import AuthenticationService
@@ -20,7 +26,13 @@ from riskforge.authentication.protocols import AuthenticationService
 __all__ = [
     "AuthenticationError",
     "AuthenticationService",
+    "ExpiredCredentialError",
+    "InvalidAudienceError",
     "InvalidCredentialsError",
+    "InvalidIssuerError",
+    "InvalidSignatureError",
+    "MalformedCredentialError",
     "MissingCredentialsError",
     "Principal",
+    "UnknownKeyError",
 ]

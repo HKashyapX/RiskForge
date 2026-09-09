@@ -20,3 +20,41 @@ class MissingCredentialsError(AuthenticationError):
 
 class InvalidCredentialsError(AuthenticationError):
     """Raised when the supplied credentials are invalid or expired."""
+
+    reason: str = "invalid_credentials"
+
+
+class MalformedCredentialError(InvalidCredentialsError):
+    """Raised when the credential structure is invalid."""
+
+    reason = "malformed"
+
+
+class ExpiredCredentialError(InvalidCredentialsError):
+    """Raised when the credential has expired."""
+
+    reason = "expired"
+
+
+class InvalidIssuerError(InvalidCredentialsError):
+    """Raised when the credential issuer does not match the expected value."""
+
+    reason = "invalid_issuer"
+
+
+class InvalidAudienceError(InvalidCredentialsError):
+    """Raised when the credential audience does not match the expected value."""
+
+    reason = "invalid_audience"
+
+
+class UnknownKeyError(InvalidCredentialsError):
+    """Raised when the credential references an unknown key identifier."""
+
+    reason = "unknown_key"
+
+
+class InvalidSignatureError(InvalidCredentialsError):
+    """Raised when the credential signature verification fails."""
+
+    reason = "invalid_signature"
