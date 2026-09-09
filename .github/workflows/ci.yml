@@ -68,6 +68,7 @@ jobs:
           tests/unit/test_review_workflow.py
           tests/unit/test_runtime_contracts.py
           tests/unit/test_runtime_lifecycle.py
+          tests/unit/test_runtime_demo.py
           tests/unit/test_serving.py
           tests/unit/test_serving_artifact.py
           tests/unit/test_serving_batching.py
