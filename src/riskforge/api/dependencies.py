@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from riskforge.authentication.principal import Principal
+
 
 @dataclass(frozen=True)
 class ReadinessSnapshot:
@@ -31,3 +33,20 @@ class ReadinessSnapshot:
 class ReadinessProvider(Protocol):
     def snapshot(self) -> ReadinessSnapshot:
         """Return the current transport-safe runtime state."""
+
+
+def require_principal() -> Principal:
+    """Marker dependency for routes requiring authentication.
+
+    When ``create_app`` is called with an ``auth_service``, this dependency
+    is overridden to extract and verify credentials from the HTTP request.
+    Without an auth service, invoking this dependency raises
+    ``MissingCredentialsError``.
+
+    Routes that need an authenticated caller declare::
+
+        principal: Principal = Depends(require_principal)
+    """
+    from riskforge.authentication.exceptions import MissingCredentialsError
+
+    raise MissingCredentialsError()

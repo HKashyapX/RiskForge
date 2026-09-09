@@ -94,6 +94,24 @@ FORBIDDEN_IMPORTS = {
         "onnxruntime",
         "riskforge.modeling",
     ],
+    "authentication": [
+        "torch",
+        "transformers",
+        "onnx",
+        "onnxruntime",
+        "fastapi",
+        "riskforge.core",
+        "riskforge.modeling",
+        "riskforge.normalization",
+        "riskforge.supervision",
+        "riskforge.serving",
+        "riskforge.metrics",
+        "riskforge.persistence",
+        "riskforge.application",
+        "riskforge.review",
+        "riskforge.api",
+        "riskforge.runtime",
+    ],
 }
 
 

@@ -11,6 +11,11 @@ from riskforge.application.exceptions import (
     MetricsApplicationError,
     ResultCorrelationError,
 )
+from riskforge.authentication.exceptions import (
+    AuthenticationError,
+    InvalidCredentialsError,
+    MissingCredentialsError,
+)
 
 
 class ErrorCode(str, Enum):
@@ -20,6 +25,8 @@ class ErrorCode(str, Enum):
     INVALID_INFERENCE_RESULT = "invalid_inference_result"
     METRICS_UNAVAILABLE = "metrics_unavailable"
     INTERNAL_ERROR = "internal_error"
+    MISSING_CREDENTIALS = "missing_credentials"
+    INVALID_CREDENTIALS = "invalid_credentials"
 
 
 @dataclass(frozen=True)
@@ -32,6 +39,14 @@ class TranslatedError:
 
 def translate_application_error(error: Exception) -> TranslatedError:
     """Map known application errors without exposing internal exception text."""
+    # --- Authentication errors (checked first: most specific) ---
+    if isinstance(error, MissingCredentialsError):
+        return TranslatedError(401, ErrorCode.MISSING_CREDENTIALS, "credentials required", False)
+    if isinstance(error, InvalidCredentialsError):
+        return TranslatedError(401, ErrorCode.INVALID_CREDENTIALS, "invalid credentials", False)
+    if isinstance(error, AuthenticationError):
+        return TranslatedError(401, ErrorCode.INVALID_CREDENTIALS, "authentication failed", False)
+    # --- Application errors ---
     if isinstance(error, DuplicateLogIdError):
         return TranslatedError(409, ErrorCode.DUPLICATE_LOG_ID, "duplicate log identifiers", False)
     if isinstance(error, ResultCorrelationError):

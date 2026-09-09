@@ -8,7 +8,7 @@ from fastapi import FastAPI, Header, Path, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from riskforge.api.dependencies import ReadinessProvider
+from riskforge.api.dependencies import ReadinessProvider, require_principal
 from riskforge.api.errors import ErrorCode, TranslatedError, translate_application_error
 from riskforge.api.models import (
     AssetSummaryResponse,
@@ -22,6 +22,12 @@ from riskforge.api.models import (
     ReadinessResponse,
 )
 from riskforge.application.protocols import RiskForgeApplication
+from riskforge.authentication.exceptions import (
+    AuthenticationError,
+    MissingCredentialsError,
+)
+from riskforge.authentication.principal import Principal
+from riskforge.authentication.protocols import AuthenticationService
 
 CorrelationHeader = Annotated[
     str,
@@ -53,12 +59,42 @@ def _error_response(correlation_id: str, translated: TranslatedError) -> ErrorRe
     )
 
 
+def _extract_principal(auth_service: AuthenticationService, request: Request) -> Principal:
+    """Extract and verify credentials from the HTTP Authorization header."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise MissingCredentialsError()
+    token = auth_header[7:]  # len("Bearer ") == 7
+    return auth_service.authenticate(token)
+
+
 def create_app(
     application: RiskForgeApplication,
     readiness: ReadinessProvider,
+    auth_service: AuthenticationService | None = None,
 ) -> FastAPI:
-    """Create the HTTP shell without constructing concrete infrastructure."""
+    """Create the HTTP shell without constructing concrete infrastructure.
+
+    Parameters
+    ----------
+    application:
+        Application-facing orchestration boundary.
+    readiness:
+        Runtime readiness provider.
+    auth_service:
+        Optional authentication provider.  When provided, routes that
+        declare ``Depends(require_principal)`` will extract and verify
+        credentials from the ``Authorization: Bearer <token>`` header.
+        When ``None``, no routes require authentication.
+    """
     app = FastAPI(title="RiskForge API", version="1.0.0")
+
+    # Wire the authentication dependency when a service is provided.
+    if auth_service is not None:
+        def _authenticated_principal(request: Request) -> Principal:
+            return _extract_principal(auth_service, request)
+
+        app.dependency_overrides[require_principal] = _authenticated_principal
 
     @app.exception_handler(_ApiFailure)
     async def handle_api_failure(_request: Request, error: _ApiFailure) -> JSONResponse:
@@ -80,6 +116,14 @@ def create_app(
         )
         payload = _error_response("unavailable", translated)
         return JSONResponse(status_code=422, content=payload.model_dump(mode="json"))
+
+    @app.exception_handler(AuthenticationError)
+    async def handle_authentication_error(
+        _request: Request, error: AuthenticationError
+    ) -> JSONResponse:
+        translated = translate_application_error(error)
+        payload = _error_response("unavailable", translated)
+        return JSONResponse(status_code=401, content=payload.model_dump(mode="json"))
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
