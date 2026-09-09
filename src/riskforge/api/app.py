@@ -151,14 +151,19 @@ def create_app(
         return response
 
     # ── CORS configuration ────────────────────────────────────────────
+    environment = os.environ.get("RISKFORGE_ENV", "development").strip().lower()
     if cors_origins is None:
-        raw = os.environ.get("RISKFORGE_CORS_ORIGINS", "*")
-        cors_origins = [o.strip() for o in raw.split(",") if o.strip()]
+        default_origins = "" if environment in {"staging", "production"} else "*"
+        raw = os.environ.get("RISKFORGE_CORS_ORIGINS", default_origins)
+        cors_origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if "*" in cors_origins and environment in {"staging", "production"}:
+        raise ValueError("wildcard CORS is forbidden in staging and production")
     if cors_origins:
+        wildcard = cors_origins == ["*"]
         app.add_middleware(
             CORSMiddleware,
             allow_origins=cors_origins,
-            allow_credentials=True,
+            allow_credentials=not wildcard,
             allow_methods=["*"],
             allow_headers=["*"],
         )
