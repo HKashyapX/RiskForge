@@ -114,6 +114,37 @@ jobs:
       - name: Compile source tree
         run: python -m compileall -q src
 
+  frontend:
+    name: Frontend lint, test, and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: Website/frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: Website/frontend/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Test frontend
+        run: npm test
+
+      - name: Build production frontend
+        run: npm run build
+
   test-postgres:
     name: PostgreSQL integration tests
     runs-on: ubuntu-latest
