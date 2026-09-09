@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
@@ -158,3 +159,79 @@ def test_validation_errors_do_not_echo_invalid_incident_payloads() -> None:
     assert response.json()["error"]["code"] == "invalid_request"
     assert response.json()["correlation_id"] == "unavailable"
     assert "Sensitive incident narrative" not in response.text
+
+
+def test_request_body_limit_rejects_payload_before_application() -> None:
+    application = FakeApplication()
+    client = TestClient(
+        create_app(application, FakeReadiness(), max_request_bytes=64)
+    )
+
+    response = client.post(
+        "/v1/inference",
+        content=b"x" * 65,
+        headers={
+            "content-type": "application/json",
+            "X-Correlation-ID": "limit-1",
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json() == {
+        "api_version": "v1",
+        "correlation_id": "limit-1",
+        "error": {
+            "code": "request_too_large",
+            "message": "request body exceeds configured limit",
+            "retryable": False,
+        },
+    }
+
+
+def test_request_timeout_returns_safe_gateway_timeout() -> None:
+    class SlowApplication(FakeApplication):
+        def process_incident(self, record):
+            time.sleep(0.05)
+            return super().process_incident(record)
+
+    client = TestClient(
+        create_app(
+            SlowApplication(),
+            FakeReadiness(),
+            request_timeout_seconds=0.001,
+        )
+    )
+    response = client.post(
+        "/v1/inference",
+        json={
+            "correlation_id": "timeout-1",
+            "incident": _incident().model_dump(mode="json"),
+        },
+        headers={"X-Correlation-ID": "timeout-1"},
+    )
+
+    assert response.status_code == 504
+    assert response.json()["error"] == {
+        "code": "request_timeout",
+        "message": "request exceeded configured timeout",
+        "retryable": True,
+    }
+
+
+def test_runtime_batch_limit_can_be_stricter_than_public_contract() -> None:
+    client = TestClient(
+        create_app(FakeApplication(), FakeReadiness(), max_batch_size=1)
+    )
+    response = client.post(
+        "/v1/inference/batch",
+        json={
+            "correlation_id": "batch-limit-1",
+            "incidents": [
+                _incident("LOG_1").model_dump(mode="json"),
+                _incident("LOG_2").model_dump(mode="json"),
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"

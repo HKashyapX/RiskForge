@@ -30,6 +30,7 @@ from riskforge.api.models import (
     ReviewDecisionRequest,
     ReviewDecisionResponse,
 )
+from riskforge.api.request_controls import RequestControlsMiddleware
 from riskforge.application.workflow_models import (
     IncidentQuery,
     PageRequest,
@@ -96,6 +97,9 @@ def create_app(
     auth_service: AuthenticationService | None = None,
     enable_metrics: bool = True,
     cors_origins: list[str] | None = None,
+    max_request_bytes: int = 1_048_576,
+    request_timeout_seconds: float = 30.0,
+    max_batch_size: int = 32,
 ) -> FastAPI:
     """Create the HTTP shell without constructing concrete infrastructure.
 
@@ -122,7 +126,15 @@ def create_app(
 
     from fastapi.middleware.cors import CORSMiddleware
 
+    if max_batch_size < 1 or max_batch_size > 32:
+        raise ValueError("max_batch_size must be between 1 and 32")
+
     app = FastAPI(title="RiskForge API", version="1.0.0")
+    app.add_middleware(
+        RequestControlsMiddleware,
+        max_request_bytes=max_request_bytes,
+        request_timeout_seconds=request_timeout_seconds,
+    )
 
     # ── Security headers middleware ────────────────────────────────────
     @app.middleware("http")
@@ -272,6 +284,8 @@ def create_app(
                 "batch_size": len(request.incidents),
             },
         )
+        if len(request.incidents) > max_batch_size:
+            raise _ApiFailure(request.correlation_id, _invalid_request())
         try:
             results = tuple(application.process_batch(request.incidents))
         except Exception as error:
