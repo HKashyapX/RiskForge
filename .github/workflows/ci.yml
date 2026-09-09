@@ -33,7 +33,7 @@ jobs:
             requirements-dev.txt
 
       - name: Install test dependencies
-        run: python -m pip install pytest ruff numpy pydantic pyyaml onnx onnxruntime
+        run: python -m pip install pytest ruff numpy pydantic pyyaml onnx onnxruntime psycopg[binary] psycopg_pool
 
       - name: Lint application, persistence, review, supervision, and serving
         run: >-
@@ -62,6 +62,8 @@ jobs:
           tests/integration/test_serving_benchmark.py
           tests/integration/test_persistence_sqlite.py
           tests/integration/test_review_audit_sqlite.py
+          tests/integration/test_persistence_postgres.py
+          tests/contract/test_repository_protocol.py
 
       - name: Check subsystem boundaries
         run: python scripts/lint_boundaries.py
@@ -78,3 +80,79 @@ jobs:
 
       - name: Compile source tree
         run: python -m compileall -q src
+
+  test-postgres:
+    name: PostgreSQL integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: riskforge_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install test dependencies
+        run: python -m pip install pytest psycopg[binary] psycopg_pool pydantic pyyaml
+
+      - name: Run PostgreSQL migrations
+        env:
+          PYTHONPATH: src
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: riskforge_test
+          PGUSER: postgres
+          PGPASSWORD: test_password
+        run: python -m riskforge.persistence.postgres.migrate
+
+      - name: Run PostgreSQL contract tests
+        env:
+          PYTHONPATH: src
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: riskforge_test
+          PGUSER: postgres
+          PGPASSWORD: test_password
+        run: python -m pytest -v tests/contract/test_repository_protocol.py
+
+      - name: Run PostgreSQL integration tests
+        env:
+          PYTHONPATH: src
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: riskforge_test
+          PGUSER: postgres
+          PGPASSWORD: test_password
+        run: python -m pytest -v tests/integration/test_persistence_postgres.py
+
+      - name: Run PostgreSQL migration tests
+        env:
+          PYTHONPATH: src
+          PGHOST: localhost
+          PGPORT: 5432
+          PGDATABASE: riskforge_test
+          PGUSER: postgres
+          PGPASSWORD: test_password
+        run: python -m pytest -v tests/integration/test_migrations.py
