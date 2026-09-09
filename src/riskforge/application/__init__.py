@@ -19,11 +19,16 @@ from riskforge.application.workflow_models import (
     ReviewCommand,
     ReviewDecisionView,
 )
-from riskforge.application.workflow_protocols import IncidentWorkflowReader, ReviewWorkflowWriter
+from riskforge.application.workflow_protocols import (
+    BackendApplication,
+    IncidentWorkflowReader,
+    ReviewWorkflowWriter,
+)
 
 __all__ = [
     "ApplicationService",
     "AuditEventView",
+    "BackendApplication",
     "BackendApplicationService",
     "EncodedIncident",
     "IncidentInputEncoder",

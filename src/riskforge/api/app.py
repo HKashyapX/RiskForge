@@ -2,32 +2,46 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated
 
-from fastapi import FastAPI, Header, Path, Request
+from fastapi import FastAPI, Header, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from riskforge.api.dependencies import ReadinessProvider, require_principal
 from riskforge.api.errors import ErrorCode, TranslatedError, translate_application_error
 from riskforge.api.models import (
     AssetSummaryResponse,
+    AuditPageResponse,
     BatchInferenceRequest,
     BatchInferenceResponse,
     ErrorDetail,
     ErrorResponse,
     HealthResponse,
+    IncidentPageResponse,
+    IncidentResponse,
     InferenceRequest,
     InferenceResponse,
     ReadinessResponse,
+    ReviewDecisionRequest,
+    ReviewDecisionResponse,
 )
-from riskforge.application.protocols import RiskForgeApplication
+from riskforge.application.workflow_models import (
+    IncidentQuery,
+    PageRequest,
+    ReviewAction,
+    ReviewCommand,
+)
+from riskforge.application.workflow_protocols import BackendApplication
 from riskforge.authentication.exceptions import (
     AuthenticationError,
     MissingCredentialsError,
 )
 from riskforge.authentication.principal import Principal
 from riskforge.authentication.protocols import AuthenticationService
+from riskforge.core.contracts import AssetType, RoutingBucket
 
 CorrelationHeader = Annotated[
     str,
@@ -39,6 +53,9 @@ CorrelationHeader = Annotated[
     ),
 ]
 AssetIdPath = Annotated[str, Path(min_length=1, max_length=128)]
+LogIdPath = Annotated[str, Path(min_length=1, max_length=128)]
+PageOffset = Annotated[int, Query(ge=0)]
+PageLimit = Annotated[int, Query(ge=1, le=500)]
 
 
 class _ApiFailure(Exception):
@@ -69,7 +86,7 @@ def _extract_principal(auth_service: AuthenticationService, request: Request) ->
 
 
 def create_app(
-    application: RiskForgeApplication,
+    application: BackendApplication,
     readiness: ReadinessProvider,
     auth_service: AuthenticationService | None = None,
 ) -> FastAPI:
@@ -176,4 +193,120 @@ def create_app(
             summary=summary,
         )
 
+    @app.get("/v1/incidents", response_model=IncidentPageResponse)
+    def incident_queue(
+        correlation_id: CorrelationHeader,
+        offset: PageOffset = 0,
+        limit: PageLimit = 50,
+        asset_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+        asset_type: AssetType | None = None,
+        routing: RoutingBucket | None = None,
+        timestamp_from: datetime | None = None,
+        timestamp_to: datetime | None = None,
+    ) -> IncidentPageResponse:
+        try:
+            query = IncidentQuery(
+                asset_id=asset_id,
+                asset_type=asset_type,
+                routing=routing,
+                timestamp_from=timestamp_from,
+                timestamp_to=timestamp_to,
+            )
+        except ValidationError as error:
+            raise _ApiFailure(correlation_id, _invalid_request()) from error
+        try:
+            page = application.list_incidents(query, PageRequest(offset=offset, limit=limit))
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        return IncidentPageResponse(correlation_id=correlation_id, page=page)
+
+    @app.get("/v1/incidents/critical", response_model=IncidentPageResponse)
+    def critical_incidents(
+        correlation_id: CorrelationHeader,
+        offset: PageOffset = 0,
+        limit: PageLimit = 50,
+    ) -> IncidentPageResponse:
+        try:
+            page = application.list_incidents(
+                IncidentQuery(routing=RoutingBucket.CRITICAL_ESCALATION),
+                PageRequest(offset=offset, limit=limit),
+            )
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        return IncidentPageResponse(correlation_id=correlation_id, page=page)
+
+    @app.get("/v1/incidents/{log_id}", response_model=IncidentResponse)
+    def incident_detail(
+        log_id: LogIdPath, correlation_id: CorrelationHeader
+    ) -> IncidentResponse:
+        try:
+            incident = application.get_incident(log_id)
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        return IncidentResponse(correlation_id=correlation_id, incident=incident)
+
+    @app.get("/v1/incidents/{log_id}/audit", response_model=AuditPageResponse)
+    def audit_history(
+        log_id: LogIdPath,
+        correlation_id: CorrelationHeader,
+        offset: PageOffset = 0,
+        limit: PageLimit = 50,
+    ) -> AuditPageResponse:
+        try:
+            page = application.list_audit_events(
+                log_id, PageRequest(offset=offset, limit=limit)
+            )
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        return AuditPageResponse(correlation_id=correlation_id, page=page)
+
+    @app.post("/v1/incidents/{log_id}/reviews", response_model=ReviewDecisionResponse)
+    def review_decision(
+        log_id: LogIdPath,
+        body: ReviewDecisionRequest,
+        http_request: Request,
+    ) -> ReviewDecisionResponse:
+        principal = _resolve_principal(auth_service, http_request, body.correlation_id)
+        command = ReviewCommand(
+            log_id=log_id,
+            decision_id=body.decision_id,
+            reviewer_id=principal.subject_id,
+            action=ReviewAction(body.action),
+            reason=body.reason,
+        )
+        try:
+            decision = application.decide_review(command)
+        except Exception as error:
+            raise _ApiFailure(body.correlation_id, translate_application_error(error)) from error
+        return ReviewDecisionResponse(correlation_id=body.correlation_id, decision=decision)
+
     return app
+
+
+def _resolve_principal(
+    auth_service: AuthenticationService | None,
+    request: Request,
+    correlation_id: str,
+) -> Principal:
+    """Resolve an authenticated principal for routes that require identity."""
+    if auth_service is None:
+        translated = TranslatedError(
+            503,
+            ErrorCode.AUTHENTICATION_UNAVAILABLE,
+            "authentication service unavailable",
+            True,
+        )
+        raise _ApiFailure(correlation_id, translated)
+    try:
+        return _extract_principal(auth_service, request)
+    except Exception as error:
+        raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+
+
+def _invalid_request() -> TranslatedError:
+    return TranslatedError(
+        422,
+        ErrorCode.INVALID_REQUEST,
+        "request validation failed",
+        False,
+    )

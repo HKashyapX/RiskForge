@@ -14,9 +14,13 @@ from riskforge.api.models import (
 )
 from riskforge.application.exceptions import (
     DuplicateLogIdError,
+    IncidentNotFoundError,
     InferenceApplicationError,
     MetricsApplicationError,
+    QueryApplicationError,
     ResultCorrelationError,
+    ReviewConflictApplicationError,
+    ReviewPermissionApplicationError,
 )
 from riskforge.core.contracts import (
     AssetType,
@@ -101,6 +105,10 @@ def test_review_request_excludes_reviewer_identity_from_untrusted_body() -> None
         (ResultCorrelationError("private"), 502, ErrorCode.INVALID_INFERENCE_RESULT, False),
         (InferenceApplicationError("private"), 503, ErrorCode.INFERENCE_UNAVAILABLE, True),
         (MetricsApplicationError("private"), 503, ErrorCode.METRICS_UNAVAILABLE, True),
+        (IncidentNotFoundError("private"), 404, ErrorCode.INCIDENT_NOT_FOUND, False),
+        (QueryApplicationError("private"), 503, ErrorCode.QUERY_UNAVAILABLE, True),
+        (ReviewPermissionApplicationError("private"), 403, ErrorCode.REVIEW_FORBIDDEN, False),
+        (ReviewConflictApplicationError("private"), 409, ErrorCode.REVIEW_CONFLICT, False),
         (RuntimeError("private"), 500, ErrorCode.INTERNAL_ERROR, False),
     ],
 )
