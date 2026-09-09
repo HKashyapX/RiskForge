@@ -31,3 +31,19 @@ class MetricsService(Protocol):
 
     def asset_summary(self, asset_id: str) -> AssetRiskSummary:
         """Return the current summary for one asset."""
+
+
+@runtime_checkable
+class RiskForgeApplication(Protocol):
+    """Transport-facing RiskForge use cases without infrastructure exposure."""
+
+    def process_incident(self, record: IncidentNormalizedRecord) -> ModelInferenceResult:
+        """Process one normalized incident."""
+
+    def process_batch(
+        self, records: Sequence[IncidentNormalizedRecord]
+    ) -> Sequence[ModelInferenceResult]:
+        """Process normalized incidents while preserving caller order."""
+
+    def get_asset_summary(self, asset_id: str) -> AssetRiskSummary:
+        """Return an asset risk summary."""
