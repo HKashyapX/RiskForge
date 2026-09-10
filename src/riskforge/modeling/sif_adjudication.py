@@ -45,7 +45,7 @@ def _spreadsheet_safe(value: str) -> str:
     return value
 
 
-def _open_private_output(path: pathlib.Path) -> typing.Any:
+def _open_private_output(path: pathlib.Path) -> typing.TextIO:
     if path.suffix.lower() != ".csv":
         raise ValueError("adjudication output must be a .csv file")
     if path.is_symlink():
@@ -64,7 +64,7 @@ def _open_private_output(path: pathlib.Path) -> typing.Any:
         raise
 
 
-def create_adjudication_queue(paths: collections.abc.Sequence[pathlib.Path], output: Path) -> int:
+def create_adjudication_queue(paths: collections.abc.Sequence[pathlib.Path], output: pathlib.Path) -> int:
     """Write ambiguous gold records to a new private CSV and return row count."""
 
     seen_digests: set[str] = set()
@@ -145,7 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: collections.abc.Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     rows = create_adjudication_queue(args.paths, args.output)
     print(f"Created private adjudication queue: rows={rows}, output={args.output}")
