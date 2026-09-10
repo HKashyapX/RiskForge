@@ -1,0 +1,204 @@
+RiskForge Gazetteer Normalization - Final Implementation Plan
+Executive Summary
+Improve SpanPreservingGazetteer correctness (pattern matching, word boundaries, Unicode handling) while preserving exact character-offset invariants and all existing behavior. Test-driven approach with regression tests first, then incremental correctness fixes, then performance/cache, then integration verification.
+Verified Repository Facts
+Item	Verified Detail
+Rule Count	8 rules (not 9): blowout_preventer, christmas_tree, swab_unit, monkey_board, well_control_line, pressure_relief_valve, energy_isolation_loto, hydrogen_sulfide
+Patterns per Rule	Variable: blowout_preventer has 4 patterns; others have 2-4
+Pattern Compilation	Tokens split on whitespace → re.escape() → joined with \s+ → wrapped with \b → IGNORECASE
+Current \b Behavior	Matches possessives and trailing punctuation: BOP's, BOP., (BOP), BOP,, BOP; all match bop pattern. Does NOT match blow-out preventer (hyphen breaks \s+ requirement)
+Overlap Resolution	Sort by start_char then negative length (longest first), keep non-overlapping
+Existing Tests	2 tests: test_span_preservation_offsets, test_overlap_resolution_longest_match
+Downstream Consumers	supervision/heuristics.py searches canonical_form strings
+Boundary Lint	Forbids: torch, transformers, onnx, onnxruntime, riskforge.modeling, riskforge.serving in normalization
+Deps	pytest>=8.1.0 in dev; no pytest-benchmark, no CI workflows
+Invariant	Raw narrative must not be mutated; raw_narrative[span.start_char:span.end_char] == span.text for every returned span
+Proposed Changes
+Phase 0: Regression Test Suite (Test-Driven Foundation)
+File: tests/unit/test_gazetteer_regression.py (new)
+Purpose: Lock in all current behavior before any changes.
+Test Categories (Repository-Verified Behavior):
+Category	Test Cases (Parametrized)
+Golden Master - Positive	Each of 8 rules × its patterns against narratives where they currently match. Verify exact (start_char, end_char, text, canonical_form, entity_type)
+Golden Master - Negative (Current False Positives)	Explicit cases current engine correctly rejects:<br>• blowoutpreventer (no space) → no match<br>• xbop / bopx (affixed) → no match<br>• blow-out preventer (hyphen) → no match<br>• blowout preventerX (suffix) → no match
+Golden Master - Current True Positives (Punctuation)	Cases current engine does match due to \b:<br>• BOP's → matches blowout_preventer<br>• BOP. → matches<br>• (BOP) → matches<br>• BOP, / BOP; → matches
+Offset Preservation	Multi-byte Unicode (NFC/NFD), emojis, mixed scripts; verify raw_narrative[s:e] == span.text
+Overlap Resolution	Nested spans, adjacent spans, partial overlaps - verify current greedy-longest behavior
+Gate: All regression tests pass before Phase 1 changes.
+Phase 1: Correctness Fixes (Incremental, Each Behind Tests)
+1.1 Unicode Normalization & Offset Mapping
+File: src/riskforge/normalization/gazetteer.py
+Change: Add _preprocess(text: str) -> tuple[str, list[int]] returning:
+- clean_text: unicodedata.normalize('NFC', text) with whitespace normalized (\s+ → single space)
+- orig_idx_map: List where orig_idx_map[i] = original_index for each character in clean_text
+Invariant: For every returned span:
+raw_narrative[span.start_char:span.end_char] == span.text
+Implementation: Match on clean_text, get (clean_start, clean_end), map to original:
+- orig_start = orig_idx_map[clean_start]
+- orig_end = orig_idx_map[clean_end - 1] + 1 (since end is exclusive)
+- Extract span.text = raw_narrative[orig_start:orig_end]
+Note: NFC can expand or contract (e.g., é as U+00E9 vs U+0065 U+0301). Mapping handles both.
+Tests (add to regression suite):
+- café (NFC vs NFD) → spans map to original NFC indices
+- hello\t\nworld → spans skip collapsed whitespace correctly
+- Mixed: café\tworld → both normalizations compose
+1.2 Word Boundary Replacement (Conservative)
+File: src/riskforge/normalization/gazetteer.py
+Current: \b(?:token1\s+token2\s+...)\b — matches BOP's, BOP., (BOP) because \b treats punctuation as boundary
+Proposed: Replace \b with custom boundary assertion that excludes possessives and trailing punctuation:
+# Word char = Unicode letter/number/underscore (matches \w with re.UNICODE)
+# Boundary = NOT preceded/followed by word char
+START_BOUNDARY = r'(?<![^\W_])'  # Not preceded by word char (allows start, space, punctuation)
+END_BOUNDARY   = r'(?![^\W_])'   # Not followed by word char
+Effect on Current Behavior:
+Input	Current (with \b)	Proposed (with custom)
+BOP	✅ Match	✅ Match
+BOP's	✅ Match	❌ No match (followed by 's - word chars)
+BOP.	✅ Match	❌ No match (followed by .)
+(BOP)	✅ Match	❌ No match (preceded by (, followed by ))
+BOP,	✅ Match	❌ No match
+BOP;	✅ Match	❌ No match
+⚠️ UNRESOLVED DOMAIN DECISION: Whether possessives/trailing punctuation should match. Current behavior matches them. Proposed change rejects them. Decision required before implementation.
+Justified Hyphen Variants (Domain Rules Only):
+Only for multi-token patterns where hyphen is linguistically valid:
+Rule	Current Patterns	Add Hyphen Variant
+blowout_preventer	blowout preventer, blow out preventer	blow-out preventer, blow out-preventer
+well_control_line	kill line, choke line	kill-line, choke-line
+energy_isolation_loto	lock out tag out, lockout tagout	lock-out tag-out
+Implementation: For multi-token patterns only, compile:
+# token1\s+(?:[-–—]?\s*)?token2\s+...
+Single-token patterns (bop, h2s, loto, prv, psv, xtree, x-tree, xmas tree, m-board, mboard, swabbing) unchanged.
+Negative Tests (Must NOT Match):
+- blowoutpreventer (no space/hyphen)
+- xbop, bopx (affixed)
+- blowout preventerX (suffix)
+Gate: All regression tests + new positive/negative tests pass.
+1.3 Token Pattern Compilation
+File: src/riskforge/normalization/gazetteer.py
+Change: Only the hyphen variant logic above. No other changes.
+1.4 Overlap Resolution
+Decision: Keep greedy longest-first (per user decision)
+Action: Add explicit docstring explaining algorithm; add comprehensive test cases covering all overlap types. No code change unless tests reveal bug.
+Phase 2: Performance & Caching
+2.1 Config Caching
+File: src/riskforge/normalization/gazetteer.py
+Change: Module-level _CONFIG_CACHE: dict[str, dict] keyed by absolute config path
+- In __init__: load from cache if present, else load YAML and cache
+- No new class GazetteerConfig — use existing dict structure from yaml.safe_load()
+- Add clear_config_cache() for testing
+2.2 Benchmarking Methodology (Before CI Gate)
+File: tests/benchmarks/test_gazetteer_perf.py (new)
+Methodology Definition:
+Parameter	Value
+Warmup	100 iterations (discarded)
+Measured runs	1000 iterations
+Narratives	5 representative texts: short (50 chars), medium (200), long (~1000), no-matches, all-matches
+Metric	p99 latency (ms) across all narratives
+Hardware	GitHub Actions ubuntu-latest (2 vCPU, 7GB RAM) — document variability
+CI Variability	Run 3×, take median p99; fail if median > 5ms
+Implementation: Pure Python using time.perf_counter_ns() (no pytest-benchmark dependency)
+Gate: Benchmark runs locally first; CI gate added only after baseline established.
+Phase 3: Integration Verification
+File: tests/integration/test_normalization_to_supervision.py (new)
+Tests:
+1. Run SpanPreservingGazetteer.process() on sample incidents
+2. Feed IncidentNormalizedRecord to labeling functions in supervision/heuristics.py
+3. Verify canonical forms used by heuristics are present: blowout_preventer, well_control_line, hydrogen_sulfide, energy_isolation_loto, monkey_board, christmas_tree, pressure_relief_valve, swab_unit
+4. Verify no new false positives break heuristic logic
+Assumptions
+1. Preprocessing monotonicity — Whitespace collapsing only reduces length; NFC may expand/contract but orig_idx_map handles both
+2. Domain-justified variants only — Only hyphen/dash variants explicitly listed above; no open-ended "fuzzy" matching
+3. No config schema change — YAML structure stays identical; caching is transparent
+4. CI hardware stability — GitHub Actions runners consistent enough for p99 gate after 3× median
+5. Downstream only reads canonical_form — No heuristic depends on span.text exact casing or punctuation
+Unresolved Domain Decisions (Require Confirmation)
+Decision	Current Behavior	Proposed	Status
+Possessives (BOP's)	Matches bop	Reject (custom boundary)	❓ UNRESOLVED
+Trailing punctuation (BOP., BOP,)	Matches bop	Reject	❓ UNRESOLVED
+Parentheses ((BOP))	Matches bop	Reject	❓ UNRESOLVED
+Benchmark narratives	N/A	Need 5 representative texts	❓ UNRESOLVED
+BUILD HANDOFF FOR IMPLEMENTATION AGENT
+Repository Context (Verified)
+RiskForge/
+├── src/riskforge/normalization/
+│   ├── gazetteer.py           # ← MAIN TARGET (66 lines)
+│   └── CONTEXT.md             # ← invariants reference
+├── config/
+│   └── gazetteer_rules.yaml   # ← 8 rules, 17 total patterns, DO NOT MODIFY
+├── tests/unit/
+│   ├── test_normalization.py  # ← 2 existing tests
+│   └── test_gazetteer_regression.py  # ← CREATE FIRST
+├── tests/benchmarks/
+│   └── test_gazetteer_perf.py # ← CREATE IN PHASE 2
+├── tests/integration/
+│   └── test_normalization_to_supervision.py  # ← CREATE IN PHASE 3
+├── src/riskforge/supervision/
+│   └── heuristics.py          # ← DOWNSTREAM CONSUMER
+├── scripts/
+│   └── lint_boundaries.py     # ← VALIDATION GATE
+└── pyproject.toml             # ← pytest>=8.1.0, no pytest-benchmark
+Execution Order (Strict)
+STEP 1: Create tests/unit/test_gazetteer_regression.py
+        - Golden master positive: 8 rules × their patterns = ~17 test cases
+        - Golden master negative: 10+ explicit false-positive boundary cases
+        - Golden master punctuation: 6+ cases current engine matches (BOP's, BOP., etc.)
+        - Offset preservation: 5 Unicode/whitespace cases
+        - Overlap: 5 edge cases
+        RUN: pytest tests/unit/test_gazetteer_regression.py -v  → ALL PASS
+
+STEP 2: Phase 1.1 - Unicode/whitespace preprocessing with offset mapping
+        - Add _preprocess() returning (clean_text, orig_idx_map)
+        - Modify process() to use preprocessed text, map spans back using orig_idx_map
+        - Verify invariant: raw_narrative[span.start_char:span.end_char] == span.text
+        RUN: pytest tests/unit/test_gazetteer_regression.py -v  → ALL PASS
+
+STEP 3: Phase 1.2 - Word boundary replacement (BLOCKED on domain decision)
+        - IF domain decision = "reject possessives/punctuation": replace \b with custom boundaries
+        - IF domain decision = "keep current": skip this step, document behavior
+        - Add justified hyphen variants for 3 multi-token rules only
+        RUN: pytest tests/unit/test_gazetteer_regression.py -v  → ALL PASS
+
+STEP 4: Phase 1.3 - Token pattern compilation (if needed beyond 1.2)
+        RUN: pytest tests/unit/test_gazetteer_regression.py -v  → ALL PASS
+
+STEP 5: Phase 1.4 - Overlap resolution documentation + tests
+        RUN: pytest tests/unit/test_gazetteer_regression.py -v  → ALL PASS
+
+STEP 6: Phase 2.1 - Config caching
+        - Add module-level _CONFIG_CACHE, clear_config_cache()
+        RUN: pytest tests/unit/test_gazetteer_regression.py -v  → ALL PASS
+
+STEP 7: Phase 2.2 - Benchmark test + local baseline
+        - Create tests/benchmarks/test_gazetteer_perf.py
+        - Run locally, record p99, establish baseline
+        RUN: python -m pytest tests/benchmarks/test_gazetteer_perf.py -v
+
+STEP 8: Phase 3 - Integration test
+        - Create tests/integration/test_normalization_to_supervision.py
+        RUN: pytest tests/integration/test_normalization_to_supervision.py -v
+
+STEP 9: Full validation
+        - pytest tests/ -v (all pass)
+        - python scripts/lint_boundaries.py (pass)
+        - Benchmark CI gate decision (document threshold)
+Key Implementation Constraints
+Constraint	Implementation
+No raw narrative mutation	Preprocessing returns new string; original unchanged
+Exact offset preservation	orig_idx_map[clean_idx] = original_idx for every char; map spans back
+No new config class	Use existing yaml.safe_load() dict directly
+Conservative regex	Only hyphen/dash variants for 3 multi-token rules listed above
+No ML deps	Only re, unicodedata, yaml, pathlib, typing
+Boundary lint	Verify scripts/lint_boundaries.py passes after each step
+Acceptance Criteria
+- All regression tests pass (existing behavior locked)
+- New correctness tests pass (Unicode, boundaries, variants)
+- No false positives introduced (negative tests pass)
+- Benchmark p99 < 5ms locally (document value)
+- Integration test with supervision passes
+- Boundary lint passes
+- No changes to config/gazetteer_rules.yaml, contracts.py, heuristics.py
+Required Decisions Before Implementation
+1. Possessives/trailing punctuation: Should BOP's, BOP., (BOP) match bop? (Current: YES; Proposed: NO)
+2. Benchmark narratives: Provide 5 representative incident texts, or confirm extraction from test fixtures is acceptable
+3. CI gate timing: Add benchmark gate to CI after local baseline, or keep local-only for now?
+Once these are resolved, the implementation agent can execute STEP 1 immediately.
