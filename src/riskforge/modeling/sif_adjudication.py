@@ -8,8 +8,9 @@ import hashlib
 import json
 import os
 from collections.abc import Sequence
+from io import TextIOWrapper
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any
 
 
 _HEADER = (
@@ -45,7 +46,7 @@ def _spreadsheet_safe(value: str) -> str:
     return value
 
 
-def _open_private_output(path: Path) -> TextIO:
+def _open_private_output(path: Path) -> TextIOWrapper:
     if path.suffix.lower() != ".csv":
         raise ValueError("adjudication output must be a .csv file")
     if path.is_symlink():
@@ -93,7 +94,7 @@ def create_adjudication_queue(paths: Sequence[Path], output: Path) -> int:
                                 f"{path}: invalid JSON at record {line_number}"
                             ) from exc
                         if not isinstance(record, dict):
-                            raise ValueError(f"{path}: record {line_number} is not an object")
+                            raise TypeError(f"{path}: record {line_number} is not an object")
 
                         label = _nested_value(record, "labels", "sif_potential")
                         if label != "possible":
