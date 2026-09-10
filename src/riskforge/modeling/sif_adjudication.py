@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import collections.abc
 import csv
 import hashlib
 import json
 import os
-from collections.abc import Sequence
-from pathlib import Path
-from typing import Any
+import pathlib
+import typing
 
 
 _HEADER = (
@@ -24,8 +24,8 @@ _HEADER = (
 )
 
 
-def _nested_value(record: dict[str, Any], *path: str) -> Any:
-    value: Any = record
+def _nested_value(record: dict[str, typing.Any], *path: str) -> typing.Any:
+    value: typing.Any = record
     for component in path:
         if not isinstance(value, dict) or component not in value:
             return None
@@ -45,7 +45,7 @@ def _spreadsheet_safe(value: str) -> str:
     return value
 
 
-def _open_private_output(path: Path) -> Any:
+def _open_private_output(path: pathlib.Path) -> typing.Any:
     if path.suffix.lower() != ".csv":
         raise ValueError("adjudication output must be a .csv file")
     if path.is_symlink():
@@ -64,7 +64,7 @@ def _open_private_output(path: Path) -> Any:
         raise
 
 
-def create_adjudication_queue(paths: Sequence[Path], output: Path) -> int:
+def create_adjudication_queue(paths: collections.abc.Sequence[pathlib.Path], output: Path) -> int:
     """Write ambiguous gold records to a new private CSV and return row count."""
 
     seen_digests: set[str] = set()
@@ -140,8 +140,8 @@ def build_parser() -> argparse.ArgumentParser:
             "currently labeled possible."
         )
     )
-    parser.add_argument("paths", nargs="+", type=Path)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("paths", nargs="+", type=pathlib.Path)
+    parser.add_argument("--output", required=True, type=pathlib.Path)
     return parser
 
 
