@@ -58,6 +58,7 @@ jobs:
           src/riskforge/logging_config.py
           src/riskforge/observability
           src/riskforge/modeling/config.py
+          src/riskforge/modeling/dataset_contract.py
           src/riskforge/modeling/dataset_inspection.py
           scripts/benchmark_serving.py
           tests/unit/test_application.py
@@ -86,6 +87,7 @@ jobs:
           tests/unit/test_observability.py
           tests/unit/test_production_config.py
           tests/unit/test_modeling_config.py
+          tests/unit/test_dataset_contract.py
           tests/integration/test_onnx_runtime.py
           tests/integration/test_application_workflow_sqlite.py
           tests/integration/test_serving_benchmark.py
