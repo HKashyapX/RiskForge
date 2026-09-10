@@ -85,7 +85,7 @@ def _jsonl_records(path: Path) -> Iterator[dict[str, Any]]:
             except json.JSONDecodeError as exc:
                 raise ValueError(f"invalid JSON on line {line_number}") from exc
             if not isinstance(value, dict):
-                raise ValueError(f"record on line {line_number} is not an object")
+                raise TypeError(f"record on line {line_number} is not an object")
             yield value
 
 
