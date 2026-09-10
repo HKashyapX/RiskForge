@@ -27,6 +27,8 @@ import pytest
 import torch
 from transformers import AutoTokenizer
 
+from riskforge.modeling.config import modeling_data_dir
+
 
 # =============================================================================
 # CONFIGURATION
@@ -34,9 +36,7 @@ from transformers import AutoTokenizer
 
 MODEL_NAME = "microsoft/deberta-v3-base"
 
-CHECKPOINT_DIR = Path(
-    r"C:\data\processed\deberta_multitask_checkpoints"
-)
+CHECKPOINT_DIR = modeling_data_dir() / "deberta_multitask_checkpoints"
 
 BEST_CHECKPOINT = CHECKPOINT_DIR / "best.pt"
 
