@@ -27,8 +27,20 @@ def test_jsonl_inspection_never_returns_record_values(tmp_path) -> None:
     path.write_text(
         "\n".join(
             [
-                json.dumps({"incident_id": "one", "narrative": secret_narrative}),
-                json.dumps({"incident_id": "two", "narrative": "another private value"}),
+                json.dumps(
+                    {
+                        "incident_id": "one",
+                        "input": {"narrative": secret_narrative},
+                        "labels": {"sif": 1},
+                    }
+                ),
+                json.dumps(
+                    {
+                        "incident_id": "two",
+                        "input": {"narrative": "another private value"},
+                        "labels": {"sif": None},
+                    }
+                ),
             ]
         ),
         encoding="utf-8",
@@ -37,8 +49,9 @@ def test_jsonl_inspection_never_returns_record_values(tmp_path) -> None:
     report = inspect_dataset(path)
 
     assert report.records == 2
-    assert report.fields == ("incident_id", "narrative")
-    assert report.field_types == {"incident_id": "str", "narrative": "str"}
+    assert report.fields == ("incident_id", "input", "labels")
+    assert report.nested_schema["input.narrative"] == "str"
+    assert report.nested_schema["labels.sif"] == "int|null"
     assert secret_narrative not in repr(report)
 
 
