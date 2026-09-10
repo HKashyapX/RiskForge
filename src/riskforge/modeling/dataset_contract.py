@@ -89,10 +89,16 @@ def _validate_record(record: Mapping[str, Any], issues: Counter[str]) -> bool:
             valid = False
 
     present, sources = _nested_value(record, "provenance.source_datasets")
-    if present and isinstance(sources, list):
-        if not sources or not all(isinstance(source, str) and source.strip() for source in sources):
-            issues["invalid:provenance.source_datasets"] += 1
-            valid = False
+    if (
+        present
+        and isinstance(sources, list)
+        and (
+            not sources
+            or not all(isinstance(source, str) and source.strip() for source in sources)
+        )
+    ):
+        issues["invalid:provenance.source_datasets"] += 1
+        valid = False
     return valid
 
 
