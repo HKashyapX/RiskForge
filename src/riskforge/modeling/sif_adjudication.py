@@ -68,8 +68,10 @@ def create_adjudication_queue(paths: collections.abc.Sequence[pathlib.Path], out
 
     seen_digests: set[str] = set()
     rows = 0
+    output_created = False
     try:
         with _open_private_output(output) as stream:
+            output_created = True
             writer = csv.writer(stream)
             writer.writerow(_HEADER)
 
@@ -126,7 +128,8 @@ def create_adjudication_queue(paths: collections.abc.Sequence[pathlib.Path], out
                         )
                         rows += 1
     except BaseException:
-        output.unlink(missing_ok=True)
+        if output_created:
+            output.unlink(missing_ok=True)
         raise
 
     return rows
