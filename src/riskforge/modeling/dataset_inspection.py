@@ -20,7 +20,59 @@ class DatasetInspection:
     records: int
     fields: tuple[str, ...]
     field_types: Mapping[str, str]
+    nested_schema: Mapping[str, str]
     size_bytes: int
+
+
+def _record_type(value: Any) -> str:
+    if value is None:
+        return "null"
+    return type(value).__name__
+
+
+def _merge_type(schema: dict[str, str], path: str, value: Any) -> None:
+    observed = _record_type(value)
+    previous = schema.get(path)
+    if previous is None:
+        schema[path] = observed
+        return
+    if observed not in previous.split("|"):
+        schema[path] = "|".join(sorted({*previous.split("|"), observed}))
+
+
+def _collect_nested_schema(
+    value: Any,
+    schema: dict[str, str],
+    *,
+    prefix: str = "",
+    depth: int = 0,
+    max_depth: int = 4,
+) -> None:
+    if depth >= max_depth:
+        return
+    if isinstance(value, dict):
+        for raw_key, child in value.items():
+            key = str(raw_key)
+            path = f"{prefix}.{key}" if prefix else key
+            _merge_type(schema, path, child)
+            _collect_nested_schema(
+                child,
+                schema,
+                prefix=path,
+                depth=depth + 1,
+                max_depth=max_depth,
+            )
+    elif isinstance(value, list) and value:
+        item_path = f"{prefix}[]"
+        for child in value:
+            _merge_type(schema, item_path, child)
+            _collect_nested_schema(
+                child,
+                schema,
+                prefix=item_path,
+                depth=depth + 1,
+                max_depth=max_depth,
+            )
 
 
 def _jsonl_records(path: Path) -> Iterator[dict[str, Any]]:
@@ -62,9 +114,11 @@ def inspect_dataset(path: Path) -> DatasetInspection:
 
     count = 0
     first: dict[str, Any] | None = None
+    nested_schema: dict[str, str] = {}
     for record in records:
         if first is None:
             first = record
+        _collect_nested_schema(record, nested_schema)
         count += 1
 
     if first is None:
@@ -80,6 +134,7 @@ def inspect_dataset(path: Path) -> DatasetInspection:
         records=count,
         fields=fields,
         field_types=field_types,
+        nested_schema=dict(sorted(nested_schema.items())),
         size_bytes=path.stat().st_size,
     )
 
@@ -101,8 +156,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         for report in reports:
             print(f"{report.path}: {report.records} records, {report.size_bytes} bytes")
-            for field in report.fields:
-                print(f"  {field}: {report.field_types[field]}")
+            for field, field_type in report.nested_schema.items():
+                print(f"  {field}: {field_type}")
     return 0
 
 
