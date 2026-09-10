@@ -11,7 +11,6 @@ import os
 import pathlib
 import typing
 
-
 _HEADER = (
     "record_digest",
     "source_split",
