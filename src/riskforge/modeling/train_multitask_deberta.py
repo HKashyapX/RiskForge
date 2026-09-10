@@ -5,7 +5,6 @@ import math
 import os
 import random
 import time
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -31,12 +30,14 @@ from transformers import (
     get_linear_schedule_with_warmup,
 )
 
+from riskforge.modeling.config import modeling_data_dir
+
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-DATA_DIR = Path(r"C:\data\processed")
+DATA_DIR = modeling_data_dir()
 
 TRAIN_FILE = DATA_DIR / "iogp_train.csv"
 CALIBRATION_FILE = DATA_DIR / "iogp_calibration.csv"
