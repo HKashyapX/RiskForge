@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
 import pytest
 
 from riskforge.modeling.config import MODELING_DATA_DIR_ENV, modeling_data_dir
