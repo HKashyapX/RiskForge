@@ -41,6 +41,8 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer
 
+from riskforge.modeling.config import modeling_data_dir
+
 
 # =============================================================================
 # CONFIGURATION
@@ -48,9 +50,7 @@ from transformers import AutoTokenizer
 
 MODEL_NAME = "microsoft/deberta-v3-base"
 
-DATA_DIR = Path(
-    r"C:\data\processed"
-)
+DATA_DIR = modeling_data_dir()
 
 CHECKPOINT_FILE = (
     DATA_DIR
