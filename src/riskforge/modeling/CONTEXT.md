@@ -16,6 +16,10 @@
   `python -m riskforge.modeling.dataset_inspection <path>`.
 - Validate prepared SIF JSONL structure using:
   `python -m riskforge.modeling.dataset_contract <path>`.
+- Export ambiguous gold SIF records for private human adjudication using:
+  `python -m riskforge.modeling.sif_adjudication <paths...> --output <new.csv>`.
+- The adjudication queue uses digested record identifiers, spreadsheet-injection protection,
+  exclusive file creation, and private file permissions where the platform supports them.
 
 ## Invariants
 - Asymmetric Focal Loss must use gamma=2.0, alpha=0.75.
