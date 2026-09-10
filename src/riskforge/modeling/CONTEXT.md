@@ -14,6 +14,8 @@
 - Private datasets and generated model artifacts must remain outside Git history.
 - Inspect JSONL/CSV shape without printing values using:
   `python -m riskforge.modeling.dataset_inspection <path>`.
+- Validate prepared SIF JSONL structure using:
+  `python -m riskforge.modeling.dataset_contract <path>`.
 
 ## Invariants
 - Asymmetric Focal Loss must use gamma=2.0, alpha=0.75.
