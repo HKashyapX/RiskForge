@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
+
+from riskforge.modeling.config import modeling_data_dir
 
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-DATA_DIR = Path(r"C:\data\processed")
+DATA_DIR = modeling_data_dir()
 
 INPUT_FILE = DATA_DIR / "iogp_training_targets.csv"
 
