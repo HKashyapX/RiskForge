@@ -49,8 +49,22 @@ def test_missing_nested_fields_and_duplicates_fail(tmp_path) -> None:
     assert report.records == 3
     assert report.invalid_records == 2
     assert report.duplicate_ids == 1
+    assert report.cross_split_duplicates == 0
     assert report.issue_counts["duplicate:id"] == 1
     assert report.issue_counts["missing:input.narrative"] == 1
+
+
+def test_cli_detects_cross_split_leakage_without_exposing_id(tmp_path, capsys) -> None:
+    train = tmp_path / "train.jsonl"
+    test = tmp_path / "test.jsonl"
+    train.write_text(json.dumps(_record("leaked-private-id")) + "\n", encoding="utf-8")
+    test.write_text(json.dumps(_record("leaked-private-id")) + "\n", encoding="utf-8")
+
+    assert main([str(train), str(test)]) == 1
+
+    output = capsys.readouterr().out
+    assert "leakage:id: 1" in output
+    assert "leaked-private-id" not in output
 
 
 def test_malformed_json_is_counted_without_echoing_content(tmp_path, capsys) -> None:
