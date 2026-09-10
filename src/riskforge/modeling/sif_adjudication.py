@@ -8,7 +8,6 @@ import hashlib
 import json
 import os
 from collections.abc import Sequence
-from io import TextIOWrapper
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +45,7 @@ def _spreadsheet_safe(value: str) -> str:
     return value
 
 
-def _open_private_output(path: Path) -> TextIOWrapper:
+def _open_private_output(path: Path) -> Any:
     if path.suffix.lower() != ".csv":
         raise ValueError("adjudication output must be a .csv file")
     if path.is_symlink():
