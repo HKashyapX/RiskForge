@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -33,12 +32,14 @@ import onnxruntime as ort
 import torch
 from transformers import AutoTokenizer
 
+from riskforge.modeling.config import modeling_data_dir
+
 
 # =============================================================================
 # PATHS
 # =============================================================================
 
-DATA_ROOT = Path(r"C:\data\processed")
+DATA_ROOT = modeling_data_dir()
 
 CHECKPOINT_PATH = (
     DATA_ROOT

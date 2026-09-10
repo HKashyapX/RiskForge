@@ -67,14 +67,14 @@ from sklearn.metrics import (
 )
 from transformers import AutoTokenizer
 
+from riskforge.modeling.config import modeling_data_dir
+
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-DATA_DIR = Path(
-    r"C:\data\processed"
-)
+DATA_DIR = modeling_data_dir()
 
 TEST_FILE = DATA_DIR / "iogp_test.csv"
 
