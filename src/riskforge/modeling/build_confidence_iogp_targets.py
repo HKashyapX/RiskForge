@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 
 import pandas as pd
+
+from riskforge.modeling.config import modeling_data_dir
 
 
 # ============================================================================
 # PATHS
 # ============================================================================
 
-DATA_DIR = Path(r"C:\data\processed")
+DATA_DIR = modeling_data_dir()
 
 CLEAN_FILE = DATA_DIR / "clean_incidents.parquet"
 AUDIT_FILE = DATA_DIR / "iogp_manual_audit_completed.csv"
