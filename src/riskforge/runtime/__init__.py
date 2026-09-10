@@ -21,6 +21,7 @@ from riskforge.runtime.exceptions import (
     RuntimeStateError,
 )
 from riskforge.runtime.lifecycle import RuntimeManager
+from riskforge.runtime.persistence_adapter import PostgresPoolLifecycle
 from riskforge.runtime.workflow_adapters import PersistenceWorkflowReader, ReviewServiceAdapter
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "LifecycleComponent",
     "LifecycleState",
     "PersistenceWorkflowReader",
+    "PostgresPoolLifecycle",
     "ReadinessState",
     "ReviewServiceAdapter",
     "RuntimeAssembly",

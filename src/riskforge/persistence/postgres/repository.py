@@ -7,7 +7,11 @@ import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from riskforge.persistence.exceptions import PersistenceConflictError, PersistenceError
+from riskforge.persistence.exceptions import (
+    PersistenceConflictError,
+    PersistenceError,
+    PersistenceTimeoutError,
+)
 from riskforge.persistence.models import (
     AuditEvent,
     IncidentResultFilter,
@@ -16,7 +20,10 @@ from riskforge.persistence.models import (
     ReviewDecision,
     StoredIncidentResult,
 )
-from riskforge.persistence.postgres.connection import PostgresConnectionPool
+from riskforge.persistence.postgres.connection import (
+    PostgresConnectionPool,
+    is_timeout_error,
+)
 
 logger = logging.getLogger("riskforge.persistence.postgres.repository")
 
@@ -66,6 +73,19 @@ def _is_unique_violation(exc: Exception) -> bool:
     except ImportError:
         # Fallback: check the string representation (legacy behavior)
         return "duplicate key" in str(exc)
+
+
+def _translate_persistence_error(exc: Exception, message: str) -> PersistenceError:
+    """Map a database exception onto the persistence exception taxonomy.
+
+    Timeouts (connect, pool acquisition, or statement) surface as
+    :class:`PersistenceTimeoutError`; everything else stays a generic
+    :class:`PersistenceError`.  Messages are fixed and never leak database
+    provider details.
+    """
+    if is_timeout_error(exc):
+        return PersistenceTimeoutError(message)
+    return PersistenceError(message)
 
 
 # ---------------------------------------------------------------------------
@@ -141,8 +161,8 @@ class PostgresIncidentResultRepository(_PostgresRepositoryBase):
             raise
         except Exception as exc:
             conn.rollback()
-            raise PersistenceError(
-                "cannot persist incident inference result"
+            raise _translate_persistence_error(
+                exc, "cannot persist incident inference result"
             ) from exc
         finally:
             self._pool.putconn(conn)
@@ -187,7 +207,9 @@ class PostgresIncidentResultRepository(_PostgresRepositoryBase):
                     )
                 return StoredIncidentResult.model_validate_json(value)
         except Exception as exc:
-            raise PersistenceError("cannot read incident inference result") from exc
+            raise _translate_persistence_error(
+                exc, "cannot read incident inference result"
+            ) from exc
         finally:
             self._pool.putconn(conn)
 
@@ -255,7 +277,9 @@ class PostgresIncidentResultRepository(_PostgresRepositoryBase):
                 total=total,
             )
         except Exception as exc:
-            raise PersistenceError("cannot query incident inference results") from exc
+            raise _translate_persistence_error(
+                exc, "cannot query incident inference results"
+            ) from exc
         finally:
             self._pool.putconn(conn)
 
@@ -296,7 +320,9 @@ class PostgresReviewDecisionRepository(_PostgresRepositoryBase):
                 raise PersistenceConflictError(
                     "decision_id already exists"
                 ) from exc
-            raise PersistenceError("cannot append review decision") from exc
+            raise _translate_persistence_error(
+                exc, "cannot append review decision"
+            ) from exc
         finally:
             self._pool.putconn(conn)
 
@@ -345,7 +371,9 @@ class PostgresReviewDecisionRepository(_PostgresRepositoryBase):
                 total=total,
             )
         except Exception as exc:
-            raise PersistenceError("cannot query review history") from exc
+            raise _translate_persistence_error(
+                exc, "cannot query review history"
+            ) from exc
         finally:
             self._pool.putconn(conn)
 
@@ -384,7 +412,7 @@ class PostgresAuditEventRepository(_PostgresRepositoryBase):
             conn.rollback()
             if _is_unique_violation(exc):
                 raise PersistenceConflictError("event_id already exists") from exc
-            raise PersistenceError("cannot append audit event") from exc
+            raise _translate_persistence_error(exc, "cannot append audit event") from exc
         finally:
             self._pool.putconn(conn)
 
@@ -424,7 +452,9 @@ class PostgresAuditEventRepository(_PostgresRepositoryBase):
                 raise PersistenceConflictError(
                     "audit event ID already exists"
                 ) from exc
-            raise PersistenceError("cannot append audit events") from exc
+            raise _translate_persistence_error(
+                exc, "cannot append audit events"
+            ) from exc
         finally:
             self._pool.putconn(conn)
 
@@ -473,7 +503,9 @@ class PostgresAuditEventRepository(_PostgresRepositoryBase):
                 total=total,
             )
         except Exception as exc:
-            raise PersistenceError("cannot query audit history") from exc
+            raise _translate_persistence_error(
+                exc, "cannot query audit history"
+            ) from exc
         finally:
             self._pool.putconn(conn)
 
@@ -544,8 +576,9 @@ class PostgresReviewAuditWriter(_PostgresRepositoryBase):
                 raise PersistenceConflictError(
                     "review or audit record already exists"
                 ) from exc
-            raise PersistenceError(
-                "cannot atomically persist review decision and audit event"
+            raise _translate_persistence_error(
+                exc,
+                "cannot atomically persist review decision and audit event",
             ) from exc
         finally:
             self._pool.putconn(conn)

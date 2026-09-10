@@ -92,8 +92,11 @@ docker compose --profile monitoring up -d
 | `PGUSER`            | `postgres`  | Database user                                 |
 | `PGPASSWORD`        | (empty)     | Database password (**must set in production**) |
 | `PGCONNECT_TIMEOUT` | `10`        | Connection timeout in seconds                 |
+| `PGSSLMODE`         | `prefer`    | TLS mode: `disable`, `allow`, `prefer`, `require`, `verify-ca`, `verify-full` |
 | `PGMINPOOL`         | `1`         | Minimum connection pool size                  |
 | `PGMAXPOOL`         | `5`         | Maximum connection pool size                  |
+| `PGPOOL_TIMEOUT`    | `30`        | Seconds to wait for a pooled connection       |
+| `PGSTATEMENT_TIMEOUT_MS` | (unset) | Per-statement timeout in ms (unset = disabled) |
 
 ### API Server
 
