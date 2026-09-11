@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -59,6 +59,14 @@ class IngestionRunResponse(ApiModel):
     normalized: int
     failed: int
     items: tuple[IngestionItemResponse, ...]
+
+
+class AnalyticsSummaryResponse(ApiModel):
+    """Operational analytics summary for dashboard consumption."""
+
+    api_version: Literal["v1"] = API_VERSION
+    correlation_id: CorrelationId
+    summary: dict[str, Any]
 
 
 class ReviewDecisionRequest(ApiModel):

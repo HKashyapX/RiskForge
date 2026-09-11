@@ -19,6 +19,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from riskforge.analytics.service import compute_summary
 from riskforge.application.backend_service import BackendApplicationService
 from riskforge.application.protocols import InferenceEngine
 from riskforge.application.service import ApplicationService
@@ -73,7 +74,26 @@ from riskforge.normalization.gazetteer import SpanPreservingGazetteer
 logger = logging.getLogger("riskforge.runtime.production")
 
 _ENGINE_MODE_COMPONENT = "inference-engine"
-_METRICS_SCAN_LIMIT = 5_000
+_PAGE_LIMIT = 500  # persistence PageRequest hard cap; scans must paginate
+
+
+def _iter_stored(
+    incidents: IncidentResultRepository,
+    incident_filter: IncidentResultFilter | None = None,
+) -> list[StoredIncidentResult]:
+    """Page through the whole store (bounded) respecting the 500-item cap."""
+    collected: list[StoredIncidentResult] = []
+    offset = 0
+    incident_filter = incident_filter or IncidentResultFilter()
+    while True:
+        page = incidents.list(
+            incident_filter,
+            page=StorePageRequest(offset=offset, limit=_PAGE_LIMIT),
+        )
+        collected.extend(page.items)
+        offset += len(page.items)
+        if len(page.items) < _PAGE_LIMIT or offset >= page.total or offset >= 100_000:
+            return collected
 
 
 def _sqlite_database_path() -> Path:
@@ -175,13 +195,10 @@ class _StoreMetricsService:
         self._incidents = incidents
 
     def asset_summary(self, asset_id: str) -> AssetRiskSummary:
-        stored = self._incidents.list(
-            IncidentResultFilter(asset_id=asset_id),
-            page=StorePageRequest(offset=0, limit=_METRICS_SCAN_LIMIT),
-        )
-        if not stored.items:
+        stored = _iter_stored(self._incidents, IncidentResultFilter(asset_id=asset_id))
+        if not stored:
             raise KeyError(asset_id)
-        results = [item.result for item in stored.items]
+        results = [item.result for item in stored]
         mapping = {
             item.incident.log_id: (item.incident.asset_id, item.incident.asset_type)
             for item in stored.items
@@ -281,6 +298,17 @@ class _EngineModeLifecycle:
         return ComponentReadiness(name=self.name, ready=True, detail=self._engine_mode)
 
 
+class _StoreAnalytics:
+    """Analytics over the incident-result store, computed on demand."""
+
+    def __init__(self, incidents: IncidentResultRepository) -> None:
+        self._incidents = incidents
+
+    def summary(self) -> object:
+        stored = _iter_stored(self._incidents)
+        return compute_summary([(item.incident, item.result) for item in stored]).to_dict()
+
+
 class _ScoringIngestionPipeline:
     """Ingestion pipeline bound to normalization, scoring, and persistence."""
 
@@ -329,11 +357,13 @@ class ProductionComposer:
         review_service = ReviewService(incidents, review_writer, _authorizer_from_env())
         backend = BackendApplicationService(core, reader, ReviewServiceAdapter(review_service))
         scoring = _PersistingApplicationService(backend, incidents)
+        analytics = _StoreAnalytics(incidents)
         ingestion = _ScoringIngestionPipeline(
             IngestionPipeline(SpanPreservingGazetteer().process, engine),
             incidents,
         )
         scoring.ingest = ingestion.ingest  # type: ignore[method-assign]
+        scoring.analytics_summary = analytics.summary  # type: ignore[method-assign]
 
         components.append(_EngineModeLifecycle(engine_mode))
         return RuntimeAssembly(application=scoring, components=tuple(components))

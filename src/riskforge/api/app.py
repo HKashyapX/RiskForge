@@ -17,6 +17,7 @@ from starlette.responses import Response
 from riskforge.api.dependencies import ReadinessProvider, require_principal
 from riskforge.api.errors import ErrorCode, TranslatedError, translate_application_error
 from riskforge.api.models import (
+    AnalyticsSummaryResponse,
     AssetSummaryResponse,
     AuditPageResponse,
     BatchInferenceRequest,
@@ -61,6 +62,12 @@ class IngestionCapable(Protocol):
 def _ingest_capability(application: BackendApplication) -> Any:
     """Return the facade's ingest callable, or None when not composed in."""
     candidate = getattr(application, "ingest", None)
+    return candidate if callable(candidate) else None
+
+
+def _analytics_capability(application: BackendApplication) -> Any:
+    """Return the facade's analytics callable, or None when not composed in."""
+    candidate = getattr(application, "analytics_summary", None)
     return candidate if callable(candidate) else None
 
 
@@ -386,6 +393,53 @@ def create_app(
                 for item in outcome.items
             ),
         )
+
+    @app.get("/v1/analytics/summary", response_model=AnalyticsSummaryResponse)
+    def analytics_summary(correlation_id: CorrelationHeader) -> AnalyticsSummaryResponse:
+        """Operational analytics: SPD, trends, emerging risks, patterns, barriers."""
+        analytics = _analytics_capability(application)
+        if analytics is None:
+            raise _ApiFailure(
+                correlation_id,
+                TranslatedError(
+                    501,
+                    ErrorCode.INTERNAL_ERROR,
+                    "analytics is not available in this deployment",
+                    False,
+                ),
+            )
+        try:
+            payload = analytics()
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        return AnalyticsSummaryResponse(correlation_id=correlation_id, summary=payload)
+
+    @app.get("/v1/incidents/{log_id}/explanation")
+    def incident_explanation(log_id: LogIdPath, correlation_id: CorrelationHeader) -> dict:
+        """Explain an incident's classification: rules, evidence, recommendations."""
+        try:
+            view = application.get_incident(log_id)
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        from riskforge.analytics import DISCLAIMER, build_recommendations
+
+        result = view.result
+        recommendations = build_recommendations(result)
+        return {
+            "api_version": "v1",
+            "correlation_id": correlation_id,
+            "log_id": log_id,
+            "explanation": {
+                "routing": result.routing.value,
+                "calibrated_sif_p_score": result.calibrated_sif_p_score,
+                "deterministic_override": result.deterministic_override,
+                "matched_iogp_rules": [rule.value for rule in result.matched_iogp_rules],
+                "evidence_spans": [span.model_dump(mode="json") for span in view.incident.spans],
+                "triad": result.triad.model_dump(mode="json"),
+                "recommendations": list(recommendations),
+                "disclaimer": DISCLAIMER,
+            },
+        }
 
     @app.get("/v1/assets/{asset_id}/summary", response_model=AssetSummaryResponse)
     def asset_summary(
