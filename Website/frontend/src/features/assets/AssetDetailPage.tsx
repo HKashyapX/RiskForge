@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData } from '../../api/adapters/development/DevOverviewAdapter';
+import { fetchOverviewData } from '../../api/adapters/index';
 import { ArrowLeft, Database, AlertTriangle } from 'lucide-react';
 import { formatPercentage, formatNumber, formatLabel } from '../../utils/formatters';
 

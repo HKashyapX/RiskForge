@@ -23,6 +23,38 @@ from riskforge.ingestion.exceptions import ReportParseError
 
 _REQUIRED_COLUMNS = ("log_id", "timestamp", "asset_id", "asset_type", "raw_narrative")
 
+# Column synonyms accepted for tabular sources, mirroring the XLSX parser so
+# every flat-file format handles the same real-world header variations.
+_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
+    "log_id": ("log_id", "report_id", "id"),
+    "timestamp": ("timestamp", "date", "datetime", "reported_at"),
+    "asset_id": ("asset_id", "location", "asset"),
+    "asset_type": ("asset_type", "asset_category"),
+    "raw_narrative": ("raw_narrative", "narrative", "description", "details"),
+    "reporter_severity_rank": ("reporter_severity_rank", "severity", "severity_rank"),
+}
+
+
+def _canonical_header(name: Any) -> str:
+    return re.sub(r"[\s\-]+", "_", str(name).strip().lower()) if name is not None else ""
+
+
+def _resolve_columns(headers: list[str]) -> dict[str, str] | None:
+    """Map canonical column names onto actual headers, or None if a required one is missing."""
+    mapping: dict[str, str] = {}
+    for canonical_name, aliases in _COLUMN_ALIASES.items():
+        for alias in aliases:
+            if alias in headers:
+                mapping[canonical_name] = alias
+                break
+    missing = [column for column in _REQUIRED_COLUMNS if column not in mapping]
+    if missing:
+        raise ReportParseError(
+            f"missing required column(s): {', '.join(sorted(missing))} "
+            f"(accepted aliases: {', '.join(sorted({a for v in _COLUMN_ALIASES.values() for a in v}))})"
+        )
+    return mapping
+
 
 def _coerce_timestamp(value: Any) -> datetime:
     if isinstance(value, datetime):
@@ -66,22 +98,31 @@ def _build_record(row: dict[str, Any], source: str) -> IncidentRawRecord:
         raise ReportParseError(f"{source}: {error}") from error
 
 
+def _apply_column_aliases(row: dict[str, Any]) -> dict[str, Any]:
+    """Rename aliased keys (e.g. ``narrative``) to canonical contract names."""
+    resolved: dict[str, Any] = dict(row)
+    for canonical_name, aliases in _COLUMN_ALIASES.items():
+        if canonical_name in resolved:
+            continue
+        for alias in aliases:
+            if alias in resolved:
+                resolved[canonical_name] = resolved[alias]
+                break
+    return resolved
+
+
 def _iter_csv(text: str, delimiter: str, source: str) -> list[IncidentRawRecord]:
     reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
     if reader.fieldnames is None:
         raise ReportParseError(f"{source}: no header row found")
-    header_map = {name.strip().lower(): name for name in reader.fieldnames}
-    required_missing = [column for column in _REQUIRED_COLUMNS if column not in header_map]
-    if required_missing:
-        raise ReportParseError(
-            f"{source}: missing required column(s): {', '.join(required_missing)}"
-        )
+    header_map = {_canonical_header(name): name for name in reader.fieldnames}
+    mapping = _resolve_columns(list(header_map))
     records: list[IncidentRawRecord] = []
     for line_number, row in enumerate(reader, start=2):
         if all((value or "").strip() == "" for value in row.values()):
             continue
         normalized = {
-            key: row.get(header_map[key]) for key in header_map
+            canonical: row.get(header_map.get(alias, "")) for canonical, alias in mapping.items()
         }
         try:
             records.append(_build_record(normalized, f"{source} line {line_number}"))
@@ -116,7 +157,7 @@ def parse_json(data: bytes) -> list[IncidentRawRecord]:
     for index, item in enumerate(payload):
         if not isinstance(item, dict):
             raise ReportParseError(f"json: entry {index} is not an object")
-        records.append(_build_record(item, f"json entry {index}"))
+        records.append(_build_record(_apply_column_aliases(item), f"json entry {index}"))
     return records
 
 
@@ -132,7 +173,7 @@ def parse_jsonl(data: bytes) -> list[IncidentRawRecord]:
             raise ReportParseError(f"jsonl line {line_number}: {error}") from error
         if not isinstance(item, dict):
             raise ReportParseError(f"jsonl line {line_number}: entry is not an object")
-        records.append(_build_record(item, f"jsonl line {line_number}"))
+        records.append(_build_record(_apply_column_aliases(item), f"jsonl line {line_number}"))
     if not records:
         raise ReportParseError("jsonl: no entries found")
     return records

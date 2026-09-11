@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { fetchOverviewData } from '../../api/adapters/development/DevOverviewAdapter';
+import { fetchOverviewData } from '../../api/adapters/index';
 import type { RecentEscalationRow } from '../../domain/overviewTypes';
 import { AlertTriangle, ChevronRight, CheckCircle } from 'lucide-react';
 

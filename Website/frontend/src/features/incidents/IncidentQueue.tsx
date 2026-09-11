@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { incidentRepository } from '../../api/adapters/development/DevIncidentAdapter';
+import { incidentRepository } from '../../api/adapters/index';
 import { Search, ChevronRight, Filter } from 'lucide-react';
 import { formatDate, formatLabel } from '../../utils/formatters';
 

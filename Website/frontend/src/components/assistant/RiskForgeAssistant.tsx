@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { fetchDemoData } from '../../api/adapters/development/DevIncidentAdapter';
+import { fetchDemoData } from '../../api/adapters/index';
 import { formatPercentage } from '../../utils/formatters';
 import { Sparkles, ArrowRight } from 'lucide-react';
 

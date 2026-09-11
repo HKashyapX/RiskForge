@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData } from '../../api/adapters/development/DevOverviewAdapter';
+import { fetchOverviewData } from '../../api/adapters/index';
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatPercentage } from '../../utils/formatters';
 import { AlertTriangle, TrendingUp, Compass, Target, Grid, Beaker } from 'lucide-react';

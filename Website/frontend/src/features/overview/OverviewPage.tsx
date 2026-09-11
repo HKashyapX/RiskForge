@@ -10,7 +10,7 @@ import {
   Minus, ChevronRight, RefreshCw, Clock, ShieldAlert, Activity,
   ArrowUpRight, CheckCircle2,
 } from 'lucide-react';
-import { fetchOverviewData } from '../../api/adapters/development/DevOverviewAdapter';
+import { fetchOverviewData } from '../../api/adapters/index';
 import { formatDate, formatPercentage } from '../../utils/formatters';
 
 // ─── Shared Style Tokens ──────────────────────────────────────────────────────

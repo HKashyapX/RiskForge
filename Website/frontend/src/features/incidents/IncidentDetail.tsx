@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { incidentRepository } from '../../api/adapters/development/DevIncidentAdapter';
+import { incidentRepository } from '../../api/adapters/index';
 import { segmentTextBySpans } from '../../utils/spanParser';
 import { ArrowLeft, AlertTriangle, ShieldAlert, Clock, Activity } from 'lucide-react';
 import { formatDate, formatNumber, formatLabel } from '../../utils/formatters';

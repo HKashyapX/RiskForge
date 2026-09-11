@@ -72,38 +72,84 @@ class SpanPreservingGazetteer:
         cache_key = hashlib.md5(config_path.read_bytes()).hexdigest()
 
         if cache_key in _CONFIG_CACHE:
-            self.compiled_rules = _CONFIG_CACHE[cache_key]
+            self.compiled_rules, self._first_token_index = _CONFIG_CACHE[cache_key]
             return
 
         with open(config_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
-        compiled: List[Tuple[re.Pattern, str, str]] = []
+        # Decompose every configured surface form into lowercase word tokens.
+        # A pattern token may contain a literal hyphen (e.g. "x-tree"); hyphens
+        # inside a pattern token must match literally, while hyphens BETWEEN
+        # tokens act as flexible separators ("bop ram" matches "bop ram" and
+        # "bop-ram"), exactly like the previous "[\s\-]+"-joined regexes with
+        # word-boundary lookarounds.  Matching then walks the narrative
+        # token-by-token via a first-token index — O(text tokens) rather than
+        # O(patterns x characters) — which keeps latency inside the <5ms SLA
+        # as the vocabulary grows.
+        # Decompose every configured surface form into lowercase word tokens.
+        # A pattern token may contain literal hyphens or dots (e.g. "x-tree",
+        # "b.o.p"); those characters become flexible separators, matching the
+        # previous "[\s\-]+"-joined regexes with word-boundary lookarounds
+        # ("bop ram", "bop-ram", "bop - ram" were all equivalent before).
+        # Matching then walks the narrative token-by-token via a first-token
+        # index — O(text tokens) rather than O(patterns x characters) — which
+        # keeps latency inside the <5ms SLA as the vocabulary grows.
+        matchers: List[Tuple[Tuple[str, ...], str, str]] = []
         for entry in data.get("rules", []):
             canonical = entry["canonical"]
             entity_type = entry["entity_type"]
             for pattern_str in entry.get("patterns", []):
-                tokens = pattern_str.strip().split()
-                if not tokens:
-                    continue
-                escaped_tokens = [re.escape(token) for token in tokens]
-                pattern_body = r"[\s\-]+".join(escaped_tokens)
-                pattern = re.compile(
-                    rf"(?<!\w){pattern_body}(?!\w)", re.IGNORECASE
-                )
-                compiled.append((pattern, canonical, entity_type))
+                subtokens: List[str] = []
+                for tok in pattern_str.strip().split():
+                    parts = tok.lower().replace(".", "-").split("-")
+                    if any(part == "" for part in parts):
+                        raise NormalizationError(
+                            f"Invalid gazetteer pattern {pattern_str!r}: separator at token edge"
+                        )
+                    if any(not (ch.isalnum() or ch == "_") for ch in tok.replace("-", "").replace(".", "")):
+                        raise NormalizationError(
+                            f"Invalid gazetteer pattern {pattern_str!r}: unsupported characters"
+                        )
+                    subtokens.extend(parts)
+                matchers.append((tuple(subtokens), canonical, entity_type))
 
-        self.compiled_rules = compiled
-        _CONFIG_CACHE[cache_key] = compiled
+        first_token_index: dict = {}
+        for idx, (subtokens, _, _) in enumerate(matchers):
+            first_token_index.setdefault(subtokens[0], []).append(idx)
+
+        self.compiled_rules = matchers
+        self._first_token_index = first_token_index
+        _CONFIG_CACHE[cache_key] = (matchers, first_token_index)
 
     def process(self, record: IncidentRawRecord) -> IncidentNormalizedRecord:
         raw_text = record.raw_narrative
         clean_text, mapping = _preprocess_with_mapping(raw_text)
         matched_spans: List[EntitySpan] = []
 
-        for pattern, canonical, entity_type in self.compiled_rules:
-            for match in pattern.finditer(clean_text):
-                start, end = match.span()
+        token_spans = [
+            (m.start(), m.end(), m.group().lower())
+            for m in re.finditer(r"\w+", clean_text)
+        ]
+
+        for i, (start, _tok_end, tok) in enumerate(token_spans):
+            for matcher_idx in self._first_token_index.get(tok, ()):
+                subtokens, canonical, entity_type = self.compiled_rules[matcher_idx]
+                n_subs = len(subtokens)
+                if i + n_subs > len(token_spans):
+                    continue
+                matched = True
+                for k in range(1, n_subs):
+                    if token_spans[i + k][2] != subtokens[k]:
+                        matched = False
+                        break
+                    gap = clean_text[token_spans[i + k - 1][1]:token_spans[i + k][0]]
+                    if any(ch not in " -." for ch in gap):
+                        matched = False
+                        break
+                if not matched:
+                    continue
+                end = token_spans[i + n_subs - 1][1]
                 orig_start = mapping[start]
                 orig_end = mapping[end - 1] + 1
                 matched_spans.append(

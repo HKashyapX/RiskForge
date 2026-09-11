@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOverviewData } from '../../api/adapters/development/DevOverviewAdapter';
+import { fetchOverviewData } from '../../api/adapters/index';
 import type { BarrierFailureRow } from '../../domain/overviewTypes';
 import { ShieldAlert, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatNumber, formatLabel } from '../../utils/formatters';

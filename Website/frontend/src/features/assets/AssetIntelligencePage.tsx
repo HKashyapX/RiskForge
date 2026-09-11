@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { fetchOverviewData } from '../../api/adapters/development/DevOverviewAdapter';
+import { fetchOverviewData } from '../../api/adapters/index';
 import type { AssetRiskRow } from '../../domain/overviewTypes';
 import { Database, ChevronRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { formatPercentage, formatNumber, formatLabel } from '../../utils/formatters';
