@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 from dataclasses import dataclass, field
 
 from riskforge.persistence.exceptions import (
     PersistenceConnectionError,
+    PersistenceTimeoutError,
 )
 
 logger = logging.getLogger("riskforge.persistence.postgres.connection")
@@ -18,6 +20,56 @@ logger = logging.getLogger("riskforge.persistence.postgres.connection")
 # ---------------------------------------------------------------------------
 _CIRCUIT_BREAKER_THRESHOLD = 5  # consecutive failures before opening
 _CIRCUIT_BREAKER_COOLDOWN_S = 30.0  # seconds to wait before half-open
+
+# ---------------------------------------------------------------------------
+# libpq sslmode values
+# ---------------------------------------------------------------------------
+_VALID_SSL_MODES = frozenset(
+    {"disable", "allow", "prefer", "require", "verify-ca", "verify-full"}
+)
+
+# Stable component name used by runtime lifecycle/readiness composition.
+_POOL_COMPONENT_NAME = "postgres_pool"
+
+
+def _env_float(name: str, default: float) -> float:
+    """Parse a float environment variable, treating unset/empty as default."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    return float(raw)
+
+
+def _env_optional_int(name: str) -> int | None:
+    """Parse an optional integer environment variable; unset/empty -> None."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return None
+    return int(raw)
+
+
+def is_timeout_error(exc: Exception) -> bool:
+    """Classify an exception as a database/pool timeout.
+
+    Recognises psycopg and psycopg_pool timeout exceptions when available,
+    plus standard-library ``TimeoutError`` and a defensive string fallback for
+    environments where the libraries are not importable.
+    """
+    if isinstance(exc, TimeoutError):
+        return True
+    for module_name, error_name in (
+        ("psycopg.errors", "QueryCanceled"),
+        ("psycopg_pool", "PoolTimeout"),
+    ):
+        try:
+            module = __import__(module_name, fromlist=[error_name])
+            error_type = getattr(module, error_name)
+            if isinstance(exc, error_type):
+                return True
+        except Exception:  # noqa: BLE001, S112 — optional classification, never masks
+            continue
+    message = str(exc).lower()
+    return "timeout" in message or "timed out" in message
 
 
 @dataclass(frozen=True)
@@ -39,38 +91,114 @@ class PostgresConfig:
     connect_timeout: int = field(
         default_factory=lambda: int(os.environ.get("PGCONNECT_TIMEOUT", "10"))
     )
+    sslmode: str = field(
+        default_factory=lambda: os.environ.get("PGSSLMODE", "prefer")
+    )
     min_pool_size: int = field(
         default_factory=lambda: int(os.environ.get("PGMINPOOL", "1"))
     )
     max_pool_size: int = field(
         default_factory=lambda: int(os.environ.get("PGMAXPOOL", "5"))
     )
+    pool_timeout: float = field(
+        default_factory=lambda: _env_float("PGPOOL_TIMEOUT", 30.0)
+    )
+    statement_timeout_ms: int | None = field(
+        default_factory=lambda: _env_optional_int("PGSTATEMENT_TIMEOUT_MS")
+    )
 
-    def dsn(self) -> str:
-        """Return a libpq-style DSN string."""
+    def __post_init__(self) -> None:
+        if self.sslmode not in _VALID_SSL_MODES:
+            raise ValueError(
+                "PGSSLMODE must be one of: disable, allow, prefer, require, "
+                "verify-ca, verify-full"
+            )
+        if (
+            isinstance(self.port, bool)
+            or not isinstance(self.port, int)
+            or not 1 <= self.port <= 65535
+        ):
+            raise ValueError("PGPORT must be an integer between 1 and 65535")
+        if (
+            isinstance(self.connect_timeout, bool)
+            or not isinstance(self.connect_timeout, int)
+            or self.connect_timeout < 0
+        ):
+            raise ValueError("PGCONNECT_TIMEOUT must be a non-negative integer")
+        if (
+            isinstance(self.min_pool_size, bool)
+            or not isinstance(self.min_pool_size, int)
+            or self.min_pool_size < 0
+        ):
+            raise ValueError("PGMINPOOL must be a non-negative integer")
+        if (
+            isinstance(self.max_pool_size, bool)
+            or not isinstance(self.max_pool_size, int)
+            or self.max_pool_size < 1
+        ):
+            raise ValueError("PGMAXPOOL must be a positive integer")
+        if self.min_pool_size > self.max_pool_size:
+            raise ValueError("PGMINPOOL must not exceed PGMAXPOOL")
+        if not math.isfinite(self.pool_timeout) or self.pool_timeout <= 0:
+            raise ValueError("PGPOOL_TIMEOUT must be a finite number greater than 0")
+        if self.statement_timeout_ms is not None and (
+            isinstance(self.statement_timeout_ms, bool)
+            or not isinstance(self.statement_timeout_ms, int)
+            or self.statement_timeout_ms < 0
+        ):
+            raise ValueError(
+                "PGSTATEMENT_TIMEOUT_MS must be a non-negative integer"
+            )
+
+    def _dsn_parts(self) -> list[str]:
+        """Shared libpq DSN keyword/value pairs (password never included)."""
         parts = [
             f"host={self.host}",
             f"port={self.port}",
             f"dbname={self.dbname}",
             f"user={self.user}",
             f"connect_timeout={self.connect_timeout}",
+            f"sslmode={self.sslmode}",
         ]
+        if self.statement_timeout_ms is not None and self.statement_timeout_ms > 0:
+            parts.append(
+                f"options='-c statement_timeout={self.statement_timeout_ms}'"
+            )
+        return parts
+
+    def dsn(self) -> str:
+        """Return a libpq-style DSN string (password masked)."""
+        parts = self._dsn_parts()
         if self.password:
             parts.append("password=***")
         return " ".join(parts)
 
     def _dsn_full(self) -> str:
         """Return the full DSN including password (internal use only)."""
-        parts = [
-            f"host={self.host}",
-            f"port={self.port}",
-            f"dbname={self.dbname}",
-            f"user={self.user}",
-            f"connect_timeout={self.connect_timeout}",
-        ]
+        parts = self._dsn_parts()
         if self.password:
             parts.append(f"password={self.password}")
         return " ".join(parts)
+
+
+@dataclass(frozen=True)
+class PoolReadiness:
+    """Transport-neutral readiness snapshot for the PostgreSQL pool.
+
+    The field shape mirrors the runtime :class:`ComponentReadiness` contract
+    so the pool can be adapted by the runtime composer without coupling
+    persistence to the runtime subsystem.
+    """
+
+    name: str = _POOL_COMPONENT_NAME
+    ready: bool = False
+    detail: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("readiness name must not be empty")
+        if self.detail is not None and len(self.detail) > 200:
+            raise ValueError("readiness detail is too long")
 
 
 class PostgresConnectionPool:
@@ -92,6 +220,11 @@ class PostgresConnectionPool:
         # Circuit breaker state
         self._consecutive_failures = 0
         self._circuit_open_until = 0.0  # monotonic timestamp
+
+    @property
+    def name(self) -> str:
+        """Return the stable lifecycle component name."""
+        return _POOL_COMPONENT_NAME
 
     def _is_circuit_open(self) -> bool:
         """Check if the circuit breaker is currently open."""
@@ -124,6 +257,7 @@ class PostgresConnectionPool:
                     min_size=self._config.min_pool_size,
                     max_size=self._config.max_pool_size,
                     check=ConnectionPool.check_connection,
+                    timeout=self._config.pool_timeout,
                 )
                 logger.info(
                     "postgresql pool created",
@@ -131,8 +265,10 @@ class PostgresConnectionPool:
                         "host": self._config.host,
                         "port": self._config.port,
                         "dbname": self._config.dbname,
+                        "sslmode": self._config.sslmode,
                         "min_pool_size": self._config.min_pool_size,
                         "max_pool_size": self._config.max_pool_size,
+                        "pool_timeout": self._config.pool_timeout,
                     },
                 )
             except Exception as exc:
@@ -141,6 +277,27 @@ class PostgresConnectionPool:
                     "cannot create PostgreSQL connection pool"
                 ) from exc
         return self._pool
+
+    def open(self) -> None:
+        """Create the pool and wait until its minimum connections are ready.
+
+        Fail-fast variant of the lazy ``_get_pool()`` path: used by the
+        runtime lifecycle so an unreachable database blocks startup instead of
+        failing on the first request.  Idempotent: a pool that is already
+        created and ready returns immediately.
+        """
+        pool = self._get_pool()
+        try:
+            pool.wait(timeout=self._config.pool_timeout)
+        except Exception as exc:
+            self._record_failure()
+            if is_timeout_error(exc):
+                raise PersistenceTimeoutError(
+                    "PostgreSQL pool did not become ready within the configured timeout"
+                ) from exc
+            raise PersistenceConnectionError(
+                "cannot open PostgreSQL connection pool"
+            ) from exc
 
     def getconn(self):  # type: ignore[no-untyped-def]
         """Acquire a connection from the pool."""
@@ -153,7 +310,7 @@ class PostgresConnectionPool:
         last_exc: Exception | None = None
         for attempt in range(retries + 1):
             try:
-                conn = self._get_pool().getconn()
+                conn = self._get_pool().getconn(timeout=self._config.pool_timeout)
                 self._record_success()
                 return conn
             except PersistenceConnectionError:
@@ -173,6 +330,10 @@ class PostgresConnectionPool:
                     continue
                 break
 
+        if last_exc is not None and is_timeout_error(last_exc):
+            raise PersistenceTimeoutError(
+                "PostgreSQL connection acquisition timed out"
+            ) from last_exc
         raise PersistenceConnectionError(
             "cannot acquire PostgreSQL connection"
         ) from last_exc
@@ -185,8 +346,35 @@ class PostgresConnectionPool:
             except Exception:  # noqa: BLE001, S110 — connection may already be returned
                 pass
 
+    def readiness(self) -> PoolReadiness:
+        """Return a lightweight, read-only readiness snapshot.
+
+        The probe never mutates circuit breaker state: it only observes the
+        pool and, when a pool exists, verifies that a connection can be
+        acquired and returned.
+        """
+        if self._pool is None:
+            return PoolReadiness(_POOL_COMPONENT_NAME, False, "pool not created")
+        if self._is_circuit_open():
+            return PoolReadiness(_POOL_COMPONENT_NAME, False, "circuit breaker open")
+        try:
+            conn = self._pool.getconn(timeout=self._config.pool_timeout)
+        except Exception as exc:  # noqa: BLE001 — isolate arbitrary probe failures
+            if is_timeout_error(exc):
+                return PoolReadiness(
+                    _POOL_COMPONENT_NAME, False, "connection acquisition timed out"
+                )
+            return PoolReadiness(
+                _POOL_COMPONENT_NAME, False, "unable to acquire connection"
+            )
+        try:
+            self._pool.putconn(conn)
+        except Exception:  # noqa: BLE001, S110 — probe cleanup is best-effort
+            pass
+        return PoolReadiness(_POOL_COMPONENT_NAME, True, "pool ready")
+
     def close(self) -> None:
-        """Shut down the connection pool."""
+        """Shut down the connection pool idempotently."""
         if self._pool is not None:
             logger.info("closing postgresql pool")
             self._pool.close()

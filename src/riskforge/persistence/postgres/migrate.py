@@ -177,7 +177,11 @@ def _dsn_from_env() -> str:
         f"port={os.environ.get('PGPORT', '5432')}",
         f"dbname={os.environ.get('PGDATABASE', 'riskforge')}",
         f"user={os.environ.get('PGUSER', 'postgres')}",
+        f"sslmode={os.environ.get('PGSSLMODE', 'prefer')}",
     ]
+    connect_timeout = os.environ.get("PGCONNECT_TIMEOUT")
+    if connect_timeout:
+        parts.append(f"connect_timeout={connect_timeout}")
     password = os.environ.get("PGPASSWORD", "")
     if password:
         # This DSN is passed directly to psycopg and is never logged.  Redaction
