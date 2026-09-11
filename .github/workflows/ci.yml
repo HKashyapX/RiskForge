@@ -84,6 +84,7 @@ jobs:
           tests/unit/test_logging_config.py
           tests/unit/test_observability.py
           tests/unit/test_jwt_authentication.py
+          tests/unit/test_heuristic_engine.py
           tests/unit/test_production_config.py
           tests/integration/test_onnx_runtime.py
           tests/integration/test_application_workflow_sqlite.py
@@ -93,6 +94,7 @@ jobs:
           tests/integration/test_persistence_postgres.py
           tests/integration/test_auth_review_e2e.py
           tests/integration/test_resilience.py
+          tests/integration/test_production_composition.py
           tests/contract/test_repository_protocol.py
 
       - name: Check subsystem boundaries
