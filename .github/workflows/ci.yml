@@ -43,7 +43,7 @@ jobs:
             requirements-dev.txt
 
       - name: Install test dependencies
-        run: python -m pip install pytest ruff httpx numpy pydantic pyyaml onnx onnxruntime fastapi psutil psycopg[binary] psycopg_pool prometheus-client
+        run: python -m pip install pytest ruff httpx numpy pydantic pyyaml onnx onnxruntime fastapi psutil psycopg[binary] psycopg_pool prometheus-client openpyxl pypdf
 
       - name: Lint API, runtime, application, persistence, review, supervision, and serving
         run: >-
