@@ -16,12 +16,12 @@ import os
 import socket
 import tempfile
 import time
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
 from riskforge.authentication.exceptions import (
     AuthenticationError,
@@ -37,8 +37,6 @@ from riskforge.authentication.exceptions import (
 from riskforge.authentication.jwt_service import (
     JwtAuthenticationService,
     _load_keyring,
-    _parse_jwt_header,
-    _parse_jwt_payload,
 )
 from riskforge.authentication.principal import Principal
 from riskforge.authentication.protocols import AuthenticationService
@@ -88,7 +86,7 @@ def _mint_token(
     header_b64 = _b64url_encode(json.dumps(header).encode("utf-8"))
     payload_b64 = _b64url_encode(json.dumps(payload).encode("utf-8"))
 
-    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    signing_input = f"{header_b64}.{payload_b64}".encode()
     sig = hmac.new(secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
     sig_b64 = _b64url_encode(sig)
 
@@ -114,19 +112,19 @@ def _make_service(**kwargs: Any) -> JwtAuthenticationService:
 class TestPrincipal:
     def test_principal_is_frozen(self) -> None:
         principal = Principal(subject_id="user-1")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             principal.subject_id = "user-2"  # type: ignore[misc]
 
     def test_principal_rejects_extra_fields(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Principal(subject_id="user-1", role="admin")  # type: ignore[call-arg]
 
     def test_principal_requires_non_empty_subject_id(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Principal(subject_id="")
 
     def test_principal_rejects_long_subject_id(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             Principal(subject_id="x" * 129)
 
     def test_principal_accepts_max_length_subject_id(self) -> None:
@@ -324,7 +322,7 @@ class TestMalformedCredentials:
             json.dumps({"alg": "HS256", "kid": _DEFAULT_KID}).encode("utf-8")
         )
         payload_b64 = _b64url_encode(b"{bad json")
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -339,7 +337,7 @@ class TestMalformedCredentials:
             json.dumps({"alg": "HS256", "kid": _DEFAULT_KID}).encode("utf-8")
         )
         payload_b64 = _b64url_encode(json.dumps("not-an-object").encode("utf-8"))
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -403,7 +401,7 @@ class TestMalformedCredentials:
         payload_b64 = _b64url_encode(
             json.dumps({"sub": "x", "iss": _DEFAULT_ISSUER, "aud": _DEFAULT_AUDIENCE}).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -422,7 +420,7 @@ class TestMalformedCredentials:
                 {"sub": "x", "exp": True, "iss": _DEFAULT_ISSUER, "aud": _DEFAULT_AUDIENCE}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -441,7 +439,7 @@ class TestMalformedCredentials:
                 {"sub": "x", "exp": "not-a-number", "iss": _DEFAULT_ISSUER, "aud": _DEFAULT_AUDIENCE}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -607,7 +605,7 @@ class TestIssuer:
                 {"sub": "x", "exp": int(time.time()) + 3600, "aud": _DEFAULT_AUDIENCE}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -641,7 +639,7 @@ class TestAudience:
                 {"sub": "x", "exp": int(time.time()) + 3600, "iss": _DEFAULT_ISSUER}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -668,7 +666,7 @@ class TestAudience:
                 {"sub": "x", "exp": int(time.time()) + 3600, "iss": _DEFAULT_ISSUER, "aud": 12345}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -686,7 +684,7 @@ class TestAudience:
                 {"sub": "x", "exp": int(time.time()) + 3600, "iss": _DEFAULT_ISSUER, "aud": [123, "riskforge-api"]}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -727,7 +725,7 @@ class TestSubject:
                 {"exp": int(time.time()) + 3600, "iss": _DEFAULT_ISSUER, "aud": _DEFAULT_AUDIENCE}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -745,7 +743,7 @@ class TestSubject:
                 {"sub": "", "exp": int(time.time()) + 3600, "iss": _DEFAULT_ISSUER, "aud": _DEFAULT_AUDIENCE}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -763,7 +761,7 @@ class TestSubject:
                 {"sub": 12345, "exp": int(time.time()) + 3600, "iss": _DEFAULT_ISSUER, "aud": _DEFAULT_AUDIENCE}
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -892,15 +890,14 @@ class TestKeyFileLoading:
             _load_keyring(Path("/nonexistent/path"))
 
     def test_not_a_directory(self) -> None:
-        with tempfile.NamedTemporaryFile() as f:
-            with pytest.raises(NotADirectoryError):
-                _load_keyring(Path(f.name))
+        with tempfile.NamedTemporaryFile() as f, pytest.raises(NotADirectoryError):
+            _load_keyring(Path(f.name))
 
     def test_empty_directory(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with pytest.raises(ValueError, match="No valid key files"):
-                _load_keyring(Path(tmpdir))
-
+        with tempfile.TemporaryDirectory() as tmpdir, pytest.raises(
+            ValueError, match="No valid key files"
+        ):
+            _load_keyring(Path(tmpdir))
     def test_invalid_kid_filename(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             keys_dir = Path(tmpdir)
@@ -1011,27 +1008,33 @@ class TestConfiguration:
             "RISKFORGE_AUTH_AUDIENCE": _DEFAULT_AUDIENCE,
             "RISKFORGE_AUTH_KEYS_DIR": "/tmp/keys",
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(RuntimeError, match="RISKFORGE_AUTH_ISSUER"):
-                JwtAuthenticationService.from_env()
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(RuntimeError, match="RISKFORGE_AUTH_ISSUER"),
+        ):
+            JwtAuthenticationService.from_env()
 
     def test_from_env_missing_audience(self) -> None:
         env = {
             "RISKFORGE_AUTH_ISSUER": _DEFAULT_ISSUER,
             "RISKFORGE_AUTH_KEYS_DIR": "/tmp/keys",
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(RuntimeError, match="RISKFORGE_AUTH_AUDIENCE"):
-                JwtAuthenticationService.from_env()
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(RuntimeError, match="RISKFORGE_AUTH_AUDIENCE"),
+        ):
+            JwtAuthenticationService.from_env()
 
     def test_from_env_missing_keys_dir(self) -> None:
         env = {
             "RISKFORGE_AUTH_ISSUER": _DEFAULT_ISSUER,
             "RISKFORGE_AUTH_AUDIENCE": _DEFAULT_AUDIENCE,
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(RuntimeError, match="RISKFORGE_AUTH_KEYS_DIR"):
-                JwtAuthenticationService.from_env()
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(RuntimeError, match="RISKFORGE_AUTH_KEYS_DIR"),
+        ):
+            JwtAuthenticationService.from_env()
 
     def test_from_env_invalid_leeway(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1043,9 +1046,11 @@ class TestConfiguration:
                 "RISKFORGE_AUTH_KEYS_DIR": str(keys_dir),
                 "RISKFORGE_AUTH_LEEWAY_SECONDS": "not-a-number",
             }
-            with patch.dict(os.environ, env, clear=True):
-                with pytest.raises(RuntimeError, match="Invalid RISKFORGE_AUTH_LEEWAY_SECONDS"):
-                    JwtAuthenticationService.from_env()
+            with (
+                patch.dict(os.environ, env, clear=True),
+                pytest.raises(RuntimeError, match="Invalid RISKFORGE_AUTH_LEEWAY_SECONDS"),
+            ):
+                JwtAuthenticationService.from_env()
 
     def test_from_env_negative_leeway(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1057,9 +1062,11 @@ class TestConfiguration:
                 "RISKFORGE_AUTH_KEYS_DIR": str(keys_dir),
                 "RISKFORGE_AUTH_LEEWAY_SECONDS": "-5",
             }
-            with patch.dict(os.environ, env, clear=True):
-                with pytest.raises(RuntimeError, match="finite"):
-                    JwtAuthenticationService.from_env()
+            with (
+                patch.dict(os.environ, env, clear=True),
+                pytest.raises(RuntimeError, match="finite"),
+            ):
+                JwtAuthenticationService.from_env()
 
     def test_from_env_empty_keys_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1069,9 +1076,11 @@ class TestConfiguration:
                 "RISKFORGE_AUTH_AUDIENCE": _DEFAULT_AUDIENCE,
                 "RISKFORGE_AUTH_KEYS_DIR": str(keys_dir),
             }
-            with patch.dict(os.environ, env, clear=True):
-                with pytest.raises(RuntimeError, match="No valid key files"):
-                    JwtAuthenticationService.from_env()
+            with (
+                patch.dict(os.environ, env, clear=True),
+                pytest.raises(RuntimeError, match="No valid key files"),
+            ):
+                JwtAuthenticationService.from_env()
 
     def test_from_env_success(self) -> None:
         """from_env() with valid config constructs the service."""
@@ -1311,7 +1320,6 @@ class TestSecurityEdgeCases:
     def test_nan_leeway_rejected(self) -> None:
         """NaN leeway must be rejected — NaN comparisons are always False,
         which would cause tokens to never expire."""
-        import math
 
         with pytest.raises(ValueError, match="finite"):
             JwtAuthenticationService(
@@ -1354,9 +1362,11 @@ class TestSecurityEdgeCases:
                 "RISKFORGE_AUTH_KEYS_DIR": str(keys_dir),
                 "RISKFORGE_AUTH_LEEWAY_SECONDS": "nan",
             }
-            with patch.dict(os.environ, env, clear=True):
-                with pytest.raises(RuntimeError, match="finite"):
-                    JwtAuthenticationService.from_env()
+            with (
+                patch.dict(os.environ, env, clear=True),
+                pytest.raises(RuntimeError, match="finite"),
+            ):
+                JwtAuthenticationService.from_env()
 
     def test_from_env_rejects_inf_leeway(self) -> None:
         """from_env must reject Inf leeway."""
@@ -1371,9 +1381,11 @@ class TestSecurityEdgeCases:
                 "RISKFORGE_AUTH_KEYS_DIR": str(keys_dir),
                 "RISKFORGE_AUTH_LEEWAY_SECONDS": "inf",
             }
-            with patch.dict(os.environ, env, clear=True):
-                with pytest.raises(RuntimeError, match="finite"):
-                    JwtAuthenticationService.from_env()
+            with (
+                patch.dict(os.environ, env, clear=True),
+                pytest.raises(RuntimeError, match="finite"),
+            ):
+                JwtAuthenticationService.from_env()
 
     def test_from_env_nonexistent_keys_dir(self) -> None:
         """from_env with non-existent keys directory → RuntimeError."""
@@ -1382,9 +1394,11 @@ class TestSecurityEdgeCases:
             "RISKFORGE_AUTH_AUDIENCE": _DEFAULT_AUDIENCE,
             "RISKFORGE_AUTH_KEYS_DIR": "/nonexistent/path/to/keys",
         }
-        with patch.dict(os.environ, env, clear=True):
-            with pytest.raises(RuntimeError, match="does not exist"):
-                JwtAuthenticationService.from_env()
+        with (
+            patch.dict(os.environ, env, clear=True),
+            pytest.raises(RuntimeError, match="does not exist"),
+        ):
+            JwtAuthenticationService.from_env()
 
     def test_exp_as_float_accepted(self) -> None:
         """Token with float exp (e.g., from JSON decoder) is accepted."""
@@ -1403,7 +1417,7 @@ class TestSecurityEdgeCases:
                 }
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()
@@ -1449,7 +1463,7 @@ class TestSecurityEdgeCases:
                 }
             ).encode("utf-8")
         )
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         sig = hmac.new(
             _DEFAULT_SECRET.encode("utf-8"), signing_input, hashlib.sha256
         ).digest()

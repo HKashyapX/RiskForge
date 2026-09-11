@@ -57,6 +57,7 @@ jobs:
           src/riskforge/serving
           src/riskforge/logging_config.py
           src/riskforge/observability
+          src/riskforge/authentication
           scripts/benchmark_serving.py
           tests/unit/test_application.py
           tests/unit/test_application_inference_adapter.py
@@ -82,6 +83,7 @@ jobs:
           tests/unit/test_supervision_reproducibility.py
           tests/unit/test_logging_config.py
           tests/unit/test_observability.py
+          tests/unit/test_jwt_authentication.py
           tests/unit/test_production_config.py
           tests/integration/test_onnx_runtime.py
           tests/integration/test_application_workflow_sqlite.py

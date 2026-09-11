@@ -23,9 +23,8 @@ import math
 import os
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable
 
 from riskforge.authentication.exceptions import (
     ExpiredCredentialError,
@@ -371,7 +370,7 @@ class JwtAuthenticationService:
             raise UnknownKeyError()
 
         # --- 6. Signature ---
-        signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+        signing_input = f"{header_b64}.{payload_b64}".encode()
         try:
             expected_sig = hmac.new(secret, signing_input, hashlib.sha256).digest()
         except Exception as exc:
