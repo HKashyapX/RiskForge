@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml /app/pyproject.toml
 COPY src/ /app/src/
+COPY config/ /app/config/
 
 WORKDIR /app
 RUN pip install --no-cache-dir --prefix=/install .
@@ -23,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /install /usr/local
 
 COPY --from=builder /app/src /app/src
+COPY --from=builder /app/config /app/config
 
 RUN groupadd -r riskforge && useradd -r -g riskforge -d /app -s /sbin/nologin riskforge
 

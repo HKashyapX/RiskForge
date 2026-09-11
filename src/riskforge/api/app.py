@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Protocol
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -28,6 +28,7 @@ from riskforge.api.models import (
     IncidentResponse,
     InferenceRequest,
     InferenceResponse,
+    IngestionRunResponse,
     ReadinessResponse,
     ReviewDecisionRequest,
     ReviewDecisionResponse,
@@ -47,7 +48,21 @@ from riskforge.authentication.exceptions import (
 from riskforge.authentication.principal import Principal
 from riskforge.authentication.protocols import AuthenticationService
 from riskforge.core.contracts import AssetType, RoutingBucket
+from riskforge.ingestion.exceptions import IngestionError
 from riskforge.observability.middleware import RequestMetricsMiddleware
+
+
+class IngestionCapable(Protocol):
+    """Narrow capability discovered on the composed application facade."""
+
+    def ingest(self, data: bytes, fmt: str) -> object: ...
+
+
+def _ingest_capability(application: BackendApplication) -> Any:
+    """Return the facade's ingest callable, or None when not composed in."""
+    candidate = getattr(application, "ingest", None)
+    return candidate if callable(candidate) else None
+
 
 logger = logging.getLogger("riskforge.api.app")
 
@@ -299,6 +314,78 @@ def create_app(
         except Exception as error:
             raise _ApiFailure(request.correlation_id, translate_application_error(error)) from error
         return BatchInferenceResponse(correlation_id=request.correlation_id, results=results)
+
+    @app.post(
+        "/v1/ingest",
+        response_model=IngestionRunResponse,
+        responses={415: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    )
+    async def ingest_reports(
+        request: Request,
+        correlation_id: CorrelationHeader,
+        fmt: str = Query(
+            alias="format",
+            description="Report format: csv, tsv, json, jsonl, xlsx, or pdf",
+        ),
+    ) -> IngestionRunResponse:
+        """Ingest raw safety reports from an uploaded document.
+
+        The body is the raw document bytes. Reports are parsed, normalized,
+        scored, and persisted; per-report outcomes are returned so partial
+        failures are visible instead of silently dropped.
+        """
+        ingest = _ingest_capability(application)
+        if ingest is None:
+            raise _ApiFailure(
+                correlation_id,
+                TranslatedError(
+                    501,
+                    ErrorCode.INTERNAL_ERROR,
+                    "ingestion is not available in this deployment",
+                    False,
+                ),
+            )
+        fmt_normalized = fmt.strip().lower()
+        from riskforge.ingestion import SUPPORTED_FORMATS
+
+        if fmt_normalized not in SUPPORTED_FORMATS:
+            raise _ApiFailure(
+                correlation_id,
+                TranslatedError(
+                    415,
+                    ErrorCode.INVALID_REQUEST,
+                    f"unsupported format; supported: {', '.join(SUPPORTED_FORMATS)}",
+                    False,
+                ),
+            )
+        data = await request.body()
+        if not data:
+            raise _ApiFailure(correlation_id, _invalid_request())
+        try:
+            outcome = ingest(data, fmt_normalized)
+        except IngestionError as error:
+            raise _ApiFailure(
+                correlation_id,
+                TranslatedError(422, ErrorCode.INVALID_REQUEST, str(error)[:300], False),
+            ) from error
+        except Exception as error:
+            raise _ApiFailure(correlation_id, translate_application_error(error)) from error
+        return IngestionRunResponse(
+            correlation_id=correlation_id,
+            fmt=fmt_normalized,
+            received=outcome.received,
+            normalized=outcome.normalized,
+            failed=outcome.failed,
+            items=tuple(
+                {
+                    "log_id": item.log_id,
+                    "status": item.status,
+                    "error": item.error,
+                    "result": item.result,
+                }
+                for item in outcome.items
+            ),
+        )
 
     @app.get("/v1/assets/{asset_id}/summary", response_model=AssetSummaryResponse)
     def asset_summary(

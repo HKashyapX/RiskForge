@@ -58,6 +58,7 @@ jobs:
           src/riskforge/logging_config.py
           src/riskforge/observability
           src/riskforge/authentication
+          src/riskforge/ingestion
           scripts/benchmark_serving.py
           tests/unit/test_application.py
           tests/unit/test_application_inference_adapter.py
@@ -95,6 +96,7 @@ jobs:
           tests/integration/test_auth_review_e2e.py
           tests/integration/test_resilience.py
           tests/integration/test_production_composition.py
+          tests/integration/test_ingestion_api.py
           tests/contract/test_repository_protocol.py
 
       - name: Check subsystem boundaries

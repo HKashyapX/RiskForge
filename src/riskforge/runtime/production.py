@@ -36,6 +36,7 @@ from riskforge.core.contracts import (
     IncidentNormalizedRecord,
     ModelInferenceResult,
 )
+from riskforge.ingestion.pipeline import IngestionPipeline
 from riskforge.metrics.aggregator import MetricsAggregator
 from riskforge.persistence.exceptions import PersistenceConflictError
 from riskforge.persistence.models import IncidentResultFilter, StoredIncidentResult
@@ -66,6 +67,8 @@ from riskforge.serving.heuristic_engine import HeuristicRuleEngine
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+
+from riskforge.normalization.gazetteer import SpanPreservingGazetteer
 
 logger = logging.getLogger("riskforge.runtime.production")
 
@@ -278,6 +281,36 @@ class _EngineModeLifecycle:
         return ComponentReadiness(name=self.name, ready=True, detail=self._engine_mode)
 
 
+class _ScoringIngestionPipeline:
+    """Ingestion pipeline bound to normalization, scoring, and persistence."""
+
+    def __init__(
+        self,
+        pipeline: IngestionPipeline,
+        incidents: IncidentResultRepository,
+    ) -> None:
+        self._pipeline = pipeline
+        self._incidents = incidents
+
+    def ingest(self, data: bytes, fmt: str) -> object:
+        outcome = self._pipeline.run(data, fmt)
+        persisted = 0
+        for item in outcome.items:
+            if item.status == "normalized" and item.normalized is not None and item.result is not None:
+                try:
+                    self._incidents.create_idempotent(
+                        StoredIncidentResult(incident=item.normalized, result=item.result)
+                    )
+                    persisted += 1
+                except PersistenceConflictError:
+                    stored = self._incidents.get(item.normalized.log_id)
+                    if stored is None or not _same_decision(
+                        item.normalized, item.result, stored
+                    ):
+                        raise
+        return outcome
+
+
 class ProductionComposer:
     """Assemble the complete application facade and lifecycle components.
 
@@ -296,6 +329,11 @@ class ProductionComposer:
         review_service = ReviewService(incidents, review_writer, _authorizer_from_env())
         backend = BackendApplicationService(core, reader, ReviewServiceAdapter(review_service))
         scoring = _PersistingApplicationService(backend, incidents)
+        ingestion = _ScoringIngestionPipeline(
+            IngestionPipeline(SpanPreservingGazetteer().process, engine),
+            incidents,
+        )
+        scoring.ingest = ingestion.ingest  # type: ignore[method-assign]
 
         components.append(_EngineModeLifecycle(engine_mode))
         return RuntimeAssembly(application=scoring, components=tuple(components))

@@ -40,6 +40,27 @@ class BatchInferenceRequest(ApiModel):
     incidents: tuple[IncidentNormalizedRecord, ...] = Field(min_length=1, max_length=32)
 
 
+class IngestionItemResponse(ApiModel):
+    """Per-report outcome of an ingestion request."""
+
+    log_id: str
+    status: str
+    error: str | None = None
+    result: ModelInferenceResult | None = None
+
+
+class IngestionRunResponse(ApiModel):
+    """Aggregate outcome of an ingestion request."""
+
+    api_version: Literal["v1"] = API_VERSION
+    correlation_id: CorrelationId
+    fmt: str
+    received: int
+    normalized: int
+    failed: int
+    items: tuple[IngestionItemResponse, ...]
+
+
 class ReviewDecisionRequest(ApiModel):
     correlation_id: CorrelationId
     decision_id: Identifier
