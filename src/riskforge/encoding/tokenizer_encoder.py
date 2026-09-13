@@ -28,19 +28,33 @@ class HFIncidentEncoder:
     Parameters
     ----------
     tokenizer_name:
-        HuggingFace model id or local path of the tokenizer to load.  Must
-        match the artifact manifest's ``backbone`` — the production composer
-        enforces that agreement at startup.
+        Local filesystem path of the pinned tokenizer artifact.  Remote
+        HuggingFace hub lookups are refused: production (especially
+        air-gapped) deployments must ship the tokenizer alongside the ONNX
+        artifact, and the path must exist.  Must match the artifact
+        manifest's ``backbone`` — the production composer enforces that
+        agreement at startup.
     max_sequence_length:
         Fixed output width; every batch is padded/truncated to this length.
     """
 
     def __init__(self, tokenizer_name: str, max_sequence_length: int) -> None:
+        import os
+
         if not tokenizer_name:
             raise EncoderDependencyError("tokenizer_name must not be empty")
         if max_sequence_length < 1:
             raise EncoderDependencyError("max_sequence_length must be positive")
         self._max_sequence_length = max_sequence_length
+        # Refuse hub identifiers: a slash-less name or org/model id implies a
+        # network fetch.  Only local directories (or explicit local files)
+        # may be used, keeping production deterministic and air-gap safe.
+        if "://" in tokenizer_name or not os.path.isdir(tokenizer_name):
+            raise EncoderDependencyError(
+                f"tokenizer artifact {tokenizer_name!r} is not a local "
+                "directory; production deployments must ship a pinned local "
+                "tokenizer (no remote hub lookups)"
+            )
         try:
             from transformers import AutoTokenizer
         except ImportError as error:  # pragma: no cover - depends on extras
@@ -49,7 +63,9 @@ class HFIncidentEncoder:
                 "the serving extras or deploy a host with transformers present"
             ) from error
         try:
-            self._tokenizer: Any = AutoTokenizer.from_pretrained(tokenizer_name)
+            self._tokenizer: Any = AutoTokenizer.from_pretrained(
+                tokenizer_name, local_files_only=True
+            )
         except Exception as error:
             raise EncoderDependencyError(
                 f"cannot load tokenizer {tokenizer_name!r}: {error}"

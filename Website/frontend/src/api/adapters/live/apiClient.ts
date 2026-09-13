@@ -2,15 +2,27 @@ const BASE_URL: string =
   (import.meta.env?.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:8000';
 
 /**
- * Bearer token for authenticated deployments (pilot/production).  Set via
- * VITE_AUTH_TOKEN for browser-held tokens, or resolved by the host app and
- * registered through `setAuthToken`.  Requests without a token against an
- * authenticated API surface a 401 to the user — never silently degrade.
+ * Bearer token for authenticated deployments (pilot/production).
+ *
+ * SECURITY: there is intentionally NO build-time secret here.  Vite inlines
+ * every VITE_* variable into the shipped JavaScript, so a token committed to
+ * `.env` would be readable by anyone with the bundle.  Long-lived secrets
+ * must never be placed in VITE_AUTH_TOKEN.
+ *
+ * The supported integration is runtime injection: an authenticated host
+ * application (or a thin login page) obtains a short-lived token from the
+ * identity provider and registers it via `setAuthToken()` before the first
+ * request.  Requests without a token against an authenticated API surface a
+ * 401 to the user — never silently degrade to demo data.
  */
-let authToken: string | undefined = import.meta.env?.VITE_AUTH_TOKEN as string | undefined;
+let authToken: string | undefined;
 
 export function setAuthToken(token: string | undefined): void {
   authToken = token;
+}
+
+export function getAuthToken(): string | undefined {
+  return authToken;
 }
 
 let correlationCounter = 0;

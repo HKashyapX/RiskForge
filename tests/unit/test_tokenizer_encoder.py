@@ -45,12 +45,12 @@ class _FakeTokenizer:
 
 
 @pytest.fixture()
-def fake_transformers(monkeypatch):
+def fake_transformers(monkeypatch, tmp_path):
     module = types.ModuleType("transformers")
 
     tokenizers: dict[str, _FakeTokenizer] = {}
 
-    def auto_from_pretrained(name: str) -> _FakeTokenizer:
+    def auto_from_pretrained(name: str, local_files_only: bool = False) -> _FakeTokenizer:
         if name == "missing/model":
             raise OSError("not found")
         tokenizer = tokenizers.setdefault(name, _FakeTokenizer())
@@ -59,6 +59,12 @@ def fake_transformers(monkeypatch):
     module.AutoTokenizer = types.SimpleNamespace(from_pretrained=auto_from_pretrained)
     module._tokenizers = tokenizers
     monkeypatch.setitem(sys.modules, "transformers", module)
+
+    # Every construction test needs a local tokenizer directory; create one
+    # and hand back its path so tests mirror the air-gap policy.
+    local = tmp_path / "tokenizer"
+    local.mkdir(exist_ok=True)
+    module._local_dir = str(local)
     return module
 
 
@@ -74,25 +80,44 @@ def _record(log_id: str = "L1", narrative: str = "Worker exposed at height.") ->
 
 
 class TestConstruction:
-    def test_requires_transformers(self, monkeypatch) -> None:
+    def test_requires_transformers(self, monkeypatch, tmp_path) -> None:
         monkeypatch.setitem(sys.modules, "transformers", None)
+        local = tmp_path / "tokenizer"
+        local.mkdir()
         with pytest.raises(EncoderDependencyError, match="transformers is required"):
+            HFIncidentEncoder(str(local), 128)
+
+    def test_missing_tokenizer_fails_with_clear_error(self, fake_transformers, tmp_path) -> None:
+        # A directory that exists but whose load fails is a load error.
+        missing_local = tmp_path / "empty-but-missing-load"
+        missing_local.mkdir()
+
+        def _raise(name, local_files_only=False):
+            raise OSError("not found")
+
+        fake_transformers.AutoTokenizer = types.SimpleNamespace(from_pretrained=_raise)
+        with pytest.raises(EncoderDependencyError, match="cannot load tokenizer"):
+            HFIncidentEncoder(str(missing_local), 128)
+
+    def test_rejects_remote_hub_identifiers(self, fake_transformers) -> None:
+        # org/model hub ids imply a network fetch — refused outright.
+        with pytest.raises(EncoderDependencyError, match="local"):
             HFIncidentEncoder("backbone/x", 128)
 
-    def test_missing_tokenizer_fails_with_clear_error(self, fake_transformers) -> None:
-        with pytest.raises(EncoderDependencyError, match="cannot load tokenizer"):
-            HFIncidentEncoder("missing/model", 128)
+    def test_rejects_missing_local_directory(self, fake_transformers, tmp_path) -> None:
+        with pytest.raises(EncoderDependencyError, match="local"):
+            HFIncidentEncoder(str(tmp_path / "nope"), 128)
 
     def test_rejects_invalid_configuration(self, fake_transformers) -> None:
         with pytest.raises(EncoderDependencyError, match="tokenizer_name"):
             HFIncidentEncoder("", 128)
         with pytest.raises(EncoderDependencyError, match="max_sequence_length"):
-            HFIncidentEncoder("backbone/x", 0)
+            HFIncidentEncoder(fake_transformers._local_dir, 0)
 
 
 class TestEncoding:
     def test_single_record_produces_fixed_width_tensors(self, fake_transformers) -> None:
-        encoder = HFIncidentEncoder("backbone/x", 8)
+        encoder = HFIncidentEncoder(fake_transformers._local_dir, 8)
         encoded = encoder.encode(_record())
         assert encoded.input_ids.shape == (1, 8)
         assert encoded.attention_mask.shape == (1, 8)
@@ -101,28 +126,32 @@ class TestEncoding:
         assert encoded.input_ids.dtype == np.int64
 
     def test_batch_preserves_order_and_width(self, fake_transformers) -> None:
-        encoder = HFIncidentEncoder("backbone/x", 8)
+        encoder = HFIncidentEncoder(fake_transformers._local_dir, 8)
         encoded = encoder.encode_batch([_record("A"), _record("B"), _record("C")])
         assert encoded.input_ids.shape == (3, 8)
 
     def test_implements_application_protocol(self, fake_transformers) -> None:
-        encoder = HFIncidentEncoder("backbone/x", 8)
+        encoder = HFIncidentEncoder(fake_transformers._local_dir, 8)
         assert isinstance(encoder, IncidentInputEncoder)
 
     def test_empty_batch_is_rejected(self, fake_transformers) -> None:
-        encoder = HFIncidentEncoder("backbone/x", 8)
+        encoder = HFIncidentEncoder(fake_transformers._local_dir, 8)
         with pytest.raises(EncoderDependencyError, match="empty batch"):
             encoder.encode_batch([])
 
-    def test_unexpected_tokenizer_width_fails_closed(self, monkeypatch) -> None:
+    def test_unexpected_tokenizer_width_fails_closed(self, monkeypatch, tmp_path) -> None:
         module = types.ModuleType("transformers")
         rogue = _FakeTokenizer(width=16)
 
-        module.AutoTokenizer = types.SimpleNamespace(from_pretrained=lambda name: rogue)
+        module.AutoTokenizer = types.SimpleNamespace(
+            from_pretrained=lambda name, local_files_only=False: rogue
+        )
         monkeypatch.setitem(sys.modules, "transformers", module)
-        encoder = HFIncidentEncoder("backbone/x", 8)
+        local = tmp_path / "tokenizer"
+        local.mkdir()
+        encoder = HFIncidentEncoder(str(local), 8)
         with pytest.raises(EncoderDependencyError, match="tokenization failed"):
             encoder.encode(_record())
 
     def test_max_sequence_length_exposed(self, fake_transformers) -> None:
-        assert HFIncidentEncoder("backbone/x", 128).max_sequence_length == 128
+        assert HFIncidentEncoder(fake_transformers._local_dir, 128).max_sequence_length == 128
