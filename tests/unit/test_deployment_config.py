@@ -56,7 +56,18 @@ class TestModeContracts:
         assert config.require_model_artifact is True
         assert config.require_postgres is True
         assert config.expose_operational_routes is True
-        assert config.public_metrics is False
+        # Metrics are served behind credential verification, never publicly.
+        assert config.public_metrics is True
+
+    def test_metrics_are_never_public_unauthenticated(self) -> None:
+        """Guarded-mount semantics: pilot/production serve metrics only to
+        verified principals; demo serves none at all."""
+        demo = DeploymentConfig.for_mode(DeploymentMode.DEMO)
+        assert demo.public_metrics is False and demo.require_auth is False
+        for mode in (DeploymentMode.PILOT, DeploymentMode.PRODUCTION):
+            config = DeploymentConfig.for_mode(mode)
+            assert config.public_metrics is True
+            assert config.require_auth is True
 
     @pytest.mark.parametrize(
         ("mode", "expected"),

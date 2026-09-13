@@ -388,12 +388,20 @@ class JwtAuthenticationService:
         payload = _parse_jwt_payload(payload_b64)
 
         # --- 8. Expiration ---
+        # exp must be a real finite number: bool is an int subclass and must
+        # be rejected explicitly, as must NaN/±Infinity (JSON encoders may
+        # emit them from naive float handling).
         exp = payload.get("exp")
-        if exp is None or isinstance(exp, bool) or not isinstance(exp, (int, float)):
+        if (
+            exp is None
+            or isinstance(exp, bool)
+            or not isinstance(exp, (int, float))
+            or not math.isfinite(float(exp))
+        ):
             raise MalformedCredentialError()
 
         now = self._now()
-        if now > exp + self._leeway:
+        if now > float(exp) + self._leeway:
             raise ExpiredCredentialError()
 
         # --- 9. Issuer ---
@@ -420,9 +428,15 @@ class JwtAuthenticationService:
             raise InvalidCredentialsError()
 
         # --- 12. nbf (not-before) ---
+        # Optional, but when present it must be a real finite number — the
+        # same bool/NaN/Infinity rejection applies as for exp.
         nbf = payload.get("nbf")
-        if nbf is not None and not isinstance(nbf, bool):
-            if not isinstance(nbf, (int, float)) or not math.isfinite(float(nbf)):
+        if nbf is not None:
+            if (
+                isinstance(nbf, bool)
+                or not isinstance(nbf, (int, float))
+                or not math.isfinite(float(nbf))
+            ):
                 raise MalformedCredentialError()
             if now < float(nbf) - self._leeway:
                 raise InvalidCredentialsError()

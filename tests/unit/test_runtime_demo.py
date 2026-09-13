@@ -36,7 +36,7 @@ def test_demo_is_live_but_never_ready(monkeypatch: pytest.MonkeyPatch) -> None:
         "ready": False,
         "state": "not_ready",
         "checked_at": response.json()["checked_at"],
-        "components": ["model"],
+        "components": ["deployment-mode:demo", "model"],
     }
 
 
@@ -62,6 +62,6 @@ def test_demo_inference_returns_safe_unavailable_error(
         },
     )
 
-    # Demo mode exposes no operational routes: scoring is refused at the
-    # authentication boundary (401), not answered with synthetic output.
-    assert response.status_code == 401
+    # Demo mode does not register operational routes at all: /v1/inference
+    # answers 404, never a synthetic result and never a bare 401.
+    assert response.status_code == 404

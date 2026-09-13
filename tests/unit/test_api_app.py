@@ -48,12 +48,12 @@ class FakeApplication:
     def __init__(self) -> None:
         self.fail_with: Exception | None = None
 
-    def process_incident(self, record):
+    def process_incident(self, record, *, actor_id="system", correlation_id=None):
         if self.fail_with is not None:
             raise self.fail_with
         return _result(record.log_id)
 
-    def process_batch(self, records):
+    def process_batch(self, records, *, actor_id="system", correlation_id=None):
         if self.fail_with is not None:
             raise self.fail_with
         return [_result(record.log_id) for record in records]

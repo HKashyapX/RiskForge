@@ -65,4 +65,6 @@ def create_demo_app() -> FastAPI:
         _DemoReadiness(),
         enable_metrics=False,
         cors_origins=[],
+        deployment_mode="demo",
+        expose_operational_routes=False,
     )

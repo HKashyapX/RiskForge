@@ -142,6 +142,7 @@ def create_app(
     require_authentication: bool = False,
     deployment_mode: str | None = None,
     scoring_label: str | None = None,
+    expose_operational_routes: bool = True,
 ) -> FastAPI:
     """Create the HTTP shell without constructing concrete infrastructure.
 
@@ -163,6 +164,12 @@ def create_app(
         List of allowed CORS origins.  When ``None``, reads from the
         ``RISKFORGE_CORS_ORIGINS`` environment variable (comma-separated).
         Set to ``["*"]`` for development.  Pass ``[]`` to disable CORS.
+    expose_operational_routes:
+        When False (demo mode), operational ``/v1/*`` routes are not
+        registered at all — inference, ingestion, analytics, incidents,
+        audit, explanations, asset summaries, and reviews answer 404.
+        Only ``/health`` and ``/ready`` remain.  Demo policy removes the
+        operational surface entirely rather than hiding it behind 401s.
     """
     import os
 
@@ -211,19 +218,10 @@ def create_app(
     # Add request-level metrics middleware
     app.add_middleware(RequestMetricsMiddleware)
 
-    # Mount Prometheus /metrics endpoint
-    if enable_metrics:
-        try:
-            from prometheus_client import make_asgi_app
-
-            metrics_app = make_asgi_app()
-            app.mount("/metrics", metrics_app)
-        except ImportError:
-            logger.warning("prometheus-client not installed; /metrics endpoint disabled")
-
     # Authentication is fail-closed: modes that require it refuse to serve
-    # without a configured service, and /metrics is wrapped behind the same
-    # credential check so operational telemetry is never public.
+    # without a configured service.  /metrics is mounted exactly once, and
+    # only behind credential verification when authentication is configured,
+    # so operational telemetry is never public.
     if require_authentication and auth_service is None:
         from riskforge.runtime.deployment import DeploymentConfigError
 
@@ -238,33 +236,44 @@ def create_app(
 
         app.dependency_overrides[require_principal] = _authenticated_principal
 
-        if enable_metrics:
+    if enable_metrics:
+        if auth_service is not None:
+            def _guarded_metrics(
+                scope: dict, receive: Callable, send: Callable
+            ) -> Any:
+                from starlette.requests import Request as StarletteRequest
+
+                request = StarletteRequest(scope, receive)
+                try:
+                    _extract_principal(auth_service, request)
+                except AuthenticationError:
+                    from starlette.responses import JSONResponse as _JSONResponse
+
+                    response = _JSONResponse(
+                        status_code=401,
+                        content={
+                            "error": {
+                                "code": "missing_credentials",
+                                "message": "authentication required",
+                            }
+                        },
+                    )
+                    return response(scope, receive, send)
+
+                from prometheus_client import make_asgi_app
+
+                return make_asgi_app()(scope, receive, send)
+
+            app.mount("/metrics", _guarded_metrics)
+        else:
             try:
                 from prometheus_client import make_asgi_app
 
-                def _guarded_metrics(environ: dict, start_response: Callable) -> Any:
-                    from starlette.requests import Request as StarletteRequest
-
-                    request = StarletteRequest(environ)
-                    try:
-                        _extract_principal(auth_service, request)
-                    except AuthenticationError:
-                        response = JSONResponse(status_code=401, content={"error": {"code": "missing_credentials", "message": "authentication required"}})
-                        start_response("401 Unauthorized", list(response.raw_headers))
-                        return [response.body]
-
-                    return make_asgi_app()(environ, start_response)
-
-                app.mount("/metrics", _guarded_metrics)
+                app.mount("/metrics", make_asgi_app())
             except ImportError:
-                logger.warning("prometheus-client not installed; /metrics endpoint disabled")
-    elif enable_metrics:
-        try:
-            from prometheus_client import make_asgi_app
-
-            app.mount("/metrics", make_asgi_app())
-        except ImportError:
-            logger.warning("prometheus-client not installed; /metrics endpoint disabled")
+                logger.warning(
+                    "prometheus-client not installed; /metrics endpoint disabled"
+                )
 
     @app.exception_handler(_ApiFailure)
     async def handle_api_failure(_request: Request, error: _ApiFailure) -> JSONResponse:
@@ -349,6 +358,15 @@ def create_app(
             return response
         return JSONResponse(status_code=503, content=response.model_dump(mode="json"))
 
+    if not expose_operational_routes:
+        # Demo policy: the operational surface is not registered at all.
+        # Unauthenticated or authenticated requests to any /v1/* path answer
+        # 404 — the routes simply do not exist in this deployment.
+        logger.info(
+            "operational routes disabled (demo mode); only /health and /ready exposed"
+        )
+        return app
+
     @app.post("/v1/inference", response_model=InferenceResponse)
     def infer(
         request: InferenceRequest,
@@ -362,7 +380,11 @@ def create_app(
             },
         )
         try:
-            result = application.process_incident(request.incident)
+            result = application.process_incident(
+                request.incident,
+                actor_id=principal.subject_id,
+                correlation_id=request.correlation_id,
+            )
         except Exception as error:
             raise _ApiFailure(request.correlation_id, translate_application_error(error)) from error
         return InferenceResponse(correlation_id=request.correlation_id, result=result)
@@ -383,7 +405,13 @@ def create_app(
         if len(request.incidents) > max_batch_size:
             raise _ApiFailure(request.correlation_id, _invalid_request())
         try:
-            results = tuple(application.process_batch(request.incidents))
+            results = tuple(
+                application.process_batch(
+                    request.incidents,
+                    actor_id=principal.subject_id,
+                    correlation_id=request.correlation_id,
+                )
+            )
         except Exception as error:
             raise _ApiFailure(request.correlation_id, translate_application_error(error)) from error
         return BatchInferenceResponse(correlation_id=request.correlation_id, results=results)
@@ -436,7 +464,12 @@ def create_app(
         if not data:
             raise _ApiFailure(correlation_id, _invalid_request())
         try:
-            outcome = ingest(data, fmt_normalized)
+            outcome = ingest(
+                data,
+                fmt_normalized,
+                actor_id=principal.subject_id,
+                correlation_id=correlation_id,
+            )
         except IngestionError as error:
             raise _ApiFailure(
                 correlation_id,

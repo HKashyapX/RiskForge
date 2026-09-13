@@ -112,7 +112,9 @@ class DeploymentConfig(BaseModel):
                 require_postgres=False,
                 deny_by_default_reviews=True,
                 expose_operational_routes=True,
-                public_metrics=False,
+                # Metrics are served but credential-guarded at the ASGI
+                # mount: unauthenticated scrapes receive 401.
+                public_metrics=True,
             )
         return cls(
             mode=mode,
@@ -122,7 +124,7 @@ class DeploymentConfig(BaseModel):
             require_postgres=True,
             deny_by_default_reviews=True,
             expose_operational_routes=True,
-            public_metrics=False,
+            public_metrics=True,
         )
 
     @property
