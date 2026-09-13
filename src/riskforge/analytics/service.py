@@ -132,25 +132,27 @@ def compute_summary(
                 )
 
     # ── Recurring patterns across assets (rule + barrier co-occurrence) ─
+    # Patterns expose de-identified evidence: counts and asset coverage only.
+    # Raw narratives stay behind the authenticated incident-detail endpoint.
     pattern_groups: dict[tuple[str, ...], dict[str, Any]] = {}
     for incident, result in zip(incidents, results, strict=True):
         if not result.matched_iogp_rules:
             continue
         key = tuple(sorted(rule.value for rule in result.matched_iogp_rules))
         group = pattern_groups.setdefault(
-            key, {"rule_combination": list(key), "count": 0, "assets": set(), "narratives": []}
+            key, {"rule_combination": list(key), "count": 0, "assets": set(), "log_ids": []}
         )
         group["count"] += 1
         group["assets"].add(incident.asset_id)
-        if len(group["narratives"]) < 3:
-            group["narratives"].append(incident.raw_narrative[:160])
+        if len(group["log_ids"]) < 3:
+            group["log_ids"].append(incident.log_id)
     patterns = sorted(
         (
             {
                 "rule_combination": group["rule_combination"],
                 "count": group["count"],
                 "assets": sorted(group["assets"]),
-                "example_narratives": group["narratives"],
+                "example_log_ids": group["log_ids"],
             }
             for group in pattern_groups.values()
         ),
