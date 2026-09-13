@@ -112,6 +112,8 @@ def _apply_column_aliases(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _iter_csv(text: str, delimiter: str, source: str) -> list[IncidentRawRecord]:
+    from riskforge.ingestion.limits import check_line_size, check_record_count
+
     reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
     if reader.fieldnames is None:
         raise ReportParseError(f"{source}: no header row found")
@@ -121,6 +123,7 @@ def _iter_csv(text: str, delimiter: str, source: str) -> list[IncidentRawRecord]
     for line_number, row in enumerate(reader, start=2):
         if all((value or "").strip() == "" for value in row.values()):
             continue
+        check_line_size(str(row), fmt=source, line_number=line_number)
         normalized = {
             canonical: row.get(header_map.get(alias, "")) for canonical, alias in mapping.items()
         }
@@ -130,6 +133,7 @@ def _iter_csv(text: str, delimiter: str, source: str) -> list[IncidentRawRecord]
             raise
         except Exception as error:
             raise ReportParseError(f"{source} line {line_number}: {error}") from error
+        check_record_count(len(records), fmt=source)
     if not records:
         raise ReportParseError(f"{source}: no data rows found")
     return records
@@ -147,12 +151,16 @@ def parse_tsv(data: bytes) -> list[IncidentRawRecord]:
 
 def parse_json(data: bytes) -> list[IncidentRawRecord]:
     """Parse a JSON array of report objects."""
+    from riskforge.ingestion.limits import check_json_depth, check_record_count
+
     try:
         payload = json.loads(data.decode("utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         raise ReportParseError(f"json: {error}") from error
     if not isinstance(payload, list):
         raise ReportParseError("json: top-level value must be an array")
+    check_json_depth(payload, fmt="json")
+    check_record_count(len(payload), fmt="json")
     records: list[IncidentRawRecord] = []
     for index, item in enumerate(payload):
         if not isinstance(item, dict):
@@ -163,10 +171,13 @@ def parse_json(data: bytes) -> list[IncidentRawRecord]:
 
 def parse_jsonl(data: bytes) -> list[IncidentRawRecord]:
     """Parse newline-delimited JSON report objects."""
+    from riskforge.ingestion.limits import check_line_size, check_record_count
+
     records: list[IncidentRawRecord] = []
     for line_number, line in enumerate(data.decode("utf-8-sig").splitlines(), start=1):
         if not line.strip():
             continue
+        check_line_size(line, fmt="jsonl", line_number=line_number)
         try:
             item = json.loads(line)
         except json.JSONDecodeError as error:
@@ -174,6 +185,7 @@ def parse_jsonl(data: bytes) -> list[IncidentRawRecord]:
         if not isinstance(item, dict):
             raise ReportParseError(f"jsonl line {line_number}: entry is not an object")
         records.append(_build_record(_apply_column_aliases(item), f"jsonl line {line_number}"))
+        check_record_count(len(records), fmt="jsonl")
     if not records:
         raise ReportParseError("jsonl: no entries found")
     return records
@@ -204,6 +216,10 @@ def parse_xlsx(data: bytes) -> list[IncidentRawRecord]:
     except Exception as error:
         raise ReportParseError(f"xlsx: {error}") from error
     sheet = workbook.worksheets[0]
+    from riskforge.ingestion.limits import check_xlsx_expansion
+
+    declared_cells = (sheet.max_row or 0) * (sheet.max_column or 0)
+    check_xlsx_expansion(data, sheet_cells=declared_cells)
     rows = sheet.iter_rows(values_only=True)
     header_row = next(rows, None)
     if header_row is None:
@@ -240,7 +256,10 @@ def parse_xlsx(data: bytes) -> list[IncidentRawRecord]:
         raise ReportParseError(f"xlsx: missing required column(s): {', '.join(missing)}")
 
     records: list[IncidentRawRecord] = []
+    from riskforge.ingestion.limits import check_record_count
+
     for row_number, row in enumerate(rows, start=2):
+        check_record_count(len(records) + 1, fmt="xlsx")
         values = dict(zip(headers, row, strict=False))
         mapped = {
             "log_id": values.get(column_log_id),
@@ -281,6 +300,10 @@ def parse_pdf(data: bytes) -> list[IncidentRawRecord]:
         reader = PdfReader(io.BytesIO(data))
     except Exception as error:
         raise ReportParseError(f"pdf: {error}") from error
+
+    from riskforge.ingestion.limits import check_pdf_pages
+
+    check_pdf_pages(len(reader.pages))
 
     import re
 
@@ -340,7 +363,11 @@ SUPPORTED_FORMATS: tuple[str, ...] = tuple(sorted(PARSERS))
 
 def parse_report(data: bytes, fmt: str) -> list[IncidentRawRecord]:
     """Parse report bytes using the parser registered for *fmt*."""
-    parser = PARSERS.get(fmt.strip().lower())
+    from riskforge.ingestion.limits import check_source
+
+    fmt_normalized = fmt.strip().lower()
+    check_source(data, fmt=fmt_normalized)
+    parser = PARSERS.get(fmt_normalized)
     if parser is None:
         raise ReportParseError(
             f"unsupported format {fmt!r}; supported: {', '.join(SUPPORTED_FORMATS)}"
@@ -349,12 +376,23 @@ def parse_report(data: bytes, fmt: str) -> list[IncidentRawRecord]:
 
 
 def dedupe_records(records: Sequence[IncidentRawRecord]) -> list[IncidentRawRecord]:
-    """Drop duplicate log_ids within one source, keeping the first."""
+    """Drop duplicate log_ids within one source, reporting what was dropped."""
+    from riskforge.ingestion.limits import check_record_count
+
     seen: set[str] = set()
+    duplicates: list[str] = []
     unique: list[IncidentRawRecord] = []
     for record in records:
         if record.log_id in seen:
+            duplicates.append(record.log_id)
             continue
         seen.add(record.log_id)
         unique.append(record)
+    if duplicates:
+        import logging
+
+        logging.getLogger("riskforge.ingestion").warning(
+            "duplicate log_ids dropped during dedupe: %s", sorted(set(duplicates))[:20]
+        )
+    check_record_count(len(unique), fmt="dedupe")
     return unique
