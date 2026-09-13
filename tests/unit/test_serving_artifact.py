@@ -15,6 +15,7 @@ from riskforge.serving.artifact import (
 def _manifest(model_sha256: str) -> dict[str, object]:
     return {
         "schema_version": 1,
+        "model_version": "1.0.0",
         "model_sha256": model_sha256,
         "backbone": "microsoft/deberta-v3-base",
         "max_sequence_length": 256,

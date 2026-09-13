@@ -27,6 +27,7 @@ from riskforge.core.contracts import (
     ModelInferenceResult,
     OperationalTriad,
     RoutingBucket,
+    ScoringMode,
 )
 
 # Deterministic thresholds mirrored from config/threshold_policy.yaml.
@@ -244,8 +245,13 @@ class HeuristicRuleEngine:
 
         result = ModelInferenceResult(
             log_id=record.log_id,
+            # Honest semantics: these are deterministic rule scores, not model
+            # probabilities.  scoring_mode records that distinction on the
+            # result itself so no consumer can mistake them for model output.
             raw_sif_p_score=round(probability, 4),
             calibrated_sif_p_score=round(probability, 4),
+            scoring_mode=ScoringMode.HEURISTIC,
+            engine_name=self.engine_name,
             deterministic_override=deterministic_override,
             routing=routing,
             matched_iogp_rules=sorted(matched, key=lambda rule: rule.value),

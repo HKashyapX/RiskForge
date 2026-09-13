@@ -14,6 +14,7 @@ def test_benchmark_tool_runs_against_real_onnx_runtime(tmp_path) -> None:
         json.dumps(
             {
                 "schema_version": 1,
+        "model_version": "1.0.0",
                 "model_sha256": sha256_file(model_path),
                 "backbone": "riskforge-benchmark-test",
                 "max_sequence_length": 8,

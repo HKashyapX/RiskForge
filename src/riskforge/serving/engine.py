@@ -54,7 +54,10 @@ class ONNXInferenceEngine:
             engine = cls(
                 model_path,
                 postprocessor=InferencePostprocessor(
-                    calibrator=TemperatureScaler(manifest.temperature)
+                    calibrator=TemperatureScaler(manifest.temperature),
+                    engine_name="onnx-inference-engine",
+                    model_version=manifest.model_version,
+                    calibration_version=f"temperature-{manifest.temperature}",
                 ),
                 max_batch_size=max_batch_size,
                 inference_timeout_s=inference_timeout_s,

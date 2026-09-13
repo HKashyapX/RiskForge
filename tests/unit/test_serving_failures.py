@@ -40,6 +40,7 @@ class _FailureSession:
 def _manifest(checksum: str) -> dict[str, object]:
     return {
         "schema_version": 1,
+        "model_version": "1.0.0",
         "model_sha256": checksum,
         "backbone": "test",
         "max_sequence_length": 8,

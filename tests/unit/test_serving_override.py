@@ -38,7 +38,7 @@ def _record(narrative: str, *, barrier: bool = True) -> IncidentNormalizedRecord
 
 def _process(record: IncidentNormalizedRecord, *, score: float = 0.1):
     logit = log(score / (1.0 - score))
-    return InferencePostprocessor().process(
+    return InferencePostprocessor(model_version="1.0.0").process(
         record, np.array([[logit]]), np.zeros((1, 9)), latency_ms=0.1
     )
 
@@ -53,7 +53,7 @@ def _process(record: IncidentNormalizedRecord, *, score: float = 0.1):
     ],
 )
 def test_routing_boundaries_are_exact(score, expected) -> None:
-    result = InferencePostprocessor(calibrator=lambda _: score).process(
+    result = InferencePostprocessor(model_version="1.0.0", calibrator=lambda _: score).process(
         _record("BOP inspected with no failure and no personnel present."),
         np.array([[0.0]]),
         np.zeros((1, 9)),

@@ -55,7 +55,7 @@ class _Session:
 
 
 def test_postprocessor_override_and_contract() -> None:
-    result = InferencePostprocessor().process(
+    result = InferencePostprocessor(model_version="1.0.0").process(
         _record(), np.array([[0.0]]), np.zeros((1, 9)), latency_ms=1.25
     )
     assert result.deterministic_override
@@ -66,7 +66,12 @@ def test_postprocessor_override_and_contract() -> None:
 
 def test_engine_chunks_dynamic_batches() -> None:
     session = _Session()
-    engine = ONNXInferenceEngine("unused.onnx", session=session, max_batch_size=2)
+    engine = ONNXInferenceEngine(
+        "unused.onnx",
+        session=session,
+        max_batch_size=2,
+        postprocessor=InferencePostprocessor(model_version="1.0.0"),
+    )
     records = [_record(), _record(), _record()]
     results = engine.infer_batch(records, np.ones((3, 8)), np.ones((3, 8)))
     assert len(results) == 3

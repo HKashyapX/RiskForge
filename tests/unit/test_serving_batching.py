@@ -7,6 +7,7 @@ import pytest
 from riskforge.serving.batching import ConcurrentRequestBatcher
 from riskforge.serving.engine import ONNXInferenceEngine
 from riskforge.serving.exceptions import BatcherClosedError, RequestQueueFullError
+from riskforge.serving.postprocessor import InferencePostprocessor
 from tests.unit.test_serving import _Node, _record
 
 
@@ -35,7 +36,12 @@ class _RecordingSession:
 
 
 def _batcher(session, **kwargs) -> ConcurrentRequestBatcher:
-    engine = ONNXInferenceEngine("unused.onnx", session=session, max_batch_size=8)
+    engine = ONNXInferenceEngine(
+        "unused.onnx",
+        session=session,
+        max_batch_size=8,
+        postprocessor=InferencePostprocessor(model_version="1.0.0"),
+    )
     return ConcurrentRequestBatcher(engine, max_queue_delay_ms=30.0, **kwargs)
 
 

@@ -87,6 +87,7 @@ def test_real_onnx_runtime_cpu_session_and_dynamic_batching(tmp_path) -> None:
         json.dumps(
             {
                 "schema_version": 1,
+        "model_version": "1.0.0",
                 "model_sha256": sha256_file(model_path),
                 "backbone": "riskforge-test-model",
                 "max_sequence_length": 8,

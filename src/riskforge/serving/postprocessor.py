@@ -14,6 +14,7 @@ from riskforge.core.contracts import (
     ModelInferenceResult,
     OperationalTriad,
     RoutingBucket,
+    ScoringMode,
 )
 
 _FAILURE_RE = re.compile(
@@ -128,15 +129,25 @@ class InferencePostprocessor:
         auto_dismiss_threshold: float = 0.4,
         critical_threshold: float = 0.65,
         calibrator: Callable[[float], float] | None = None,
+        engine_name: str = "onnx-inference-engine",
+        model_version: str | None = None,
+        calibration_version: str | None = None,
     ) -> None:
         if not 0.0 <= rule_threshold <= 1.0:
             raise ValueError("rule_threshold must be between zero and one")
         if not 0.0 <= auto_dismiss_threshold < critical_threshold <= 1.0:
             raise ValueError("routing thresholds must satisfy 0 <= dismiss < critical <= 1")
+        if not engine_name or len(engine_name) > 128:
+            raise ValueError("engine_name must be 1-128 characters")
+        if calibration_version is not None and not 1 <= len(calibration_version) <= 128:
+            raise ValueError("calibration_version must be 1-128 characters")
         self.rule_threshold = rule_threshold
         self.auto_dismiss_threshold = auto_dismiss_threshold
         self.critical_threshold = critical_threshold
         self.calibrator = calibrator
+        self.engine_name = engine_name
+        self.model_version = model_version
+        self.calibration_version = calibration_version
         self.rules = tuple(LifeSavingRule)
 
     def process_batch(
@@ -188,6 +199,10 @@ class InferencePostprocessor:
                     log_id=record.log_id,
                     raw_sif_p_score=raw_score,
                     calibrated_sif_p_score=calibrated,
+                    scoring_mode=ScoringMode.ONNX_MODEL,
+                    engine_name=self.engine_name,
+                    model_version=self.model_version,
+                    calibration_version=self.calibration_version,
                     deterministic_override=override,
                     routing=routing,
                     matched_iogp_rules=matched,

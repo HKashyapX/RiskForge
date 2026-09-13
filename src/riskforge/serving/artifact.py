@@ -20,7 +20,17 @@ class ArtifactValidationError(ArtifactLoadingError, ValueError):
 
 @dataclass(frozen=True)
 class ModelArtifactManifest:
+    """Canonical serving-side artifact manifest schema (schema_version 1).
+
+    This is the single source of truth shared with the ONNX exporter
+    (``riskforge.modeling.export_onnx``): the exporter writes exactly these
+    fields and serving refuses any other shape.  ``model_version`` is part
+    of the schema because every served result must carry the artifact
+    version it was scored with.
+    """
+
     schema_version: int
+    model_version: str
     model_sha256: str
     backbone: str
     max_sequence_length: int
@@ -42,6 +52,7 @@ class ModelArtifactManifest:
         try:
             manifest = cls(
                 schema_version=int(payload["schema_version"]),
+                model_version=str(payload["model_version"]),
                 model_sha256=str(payload["model_sha256"]),
                 backbone=str(payload["backbone"]),
                 max_sequence_length=int(payload["max_sequence_length"]),
@@ -59,6 +70,8 @@ class ModelArtifactManifest:
     def validate(self) -> None:
         if self.schema_version != 1:
             raise ArtifactValidationError("unsupported artifact manifest schema version")
+        if not self.model_version or len(self.model_version) > 128:
+            raise ArtifactValidationError("model_version must be 1-128 characters")
         if len(self.model_sha256) != 64 or any(
             character not in "0123456789abcdef" for character in self.model_sha256.lower()
         ):
