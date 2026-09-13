@@ -23,7 +23,7 @@ class IngestionItemResult:
     """Outcome for one ingested report."""
 
     log_id: str
-    status: str  # "normalized" | "failed"
+    status: str  # "normalized" | "failed" | "duplicate"
     normalized: IncidentNormalizedRecord | None = None
     result: ModelInferenceResult | None = None
     error: str | None = None
@@ -37,6 +37,7 @@ class IngestionRunResult:
     normalized: int
     failed: int
     items: tuple[IngestionItemResult, ...]
+    duplicates: tuple[str, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -55,8 +56,13 @@ class IngestionPipeline:
         self._engine = inference_engine
 
     def run(self, data: bytes, fmt: str) -> IngestionRunResult:
-        records = dedupe_records(parse_report(data, fmt))
-        items: list[IngestionItemResult] = []
+        records, duplicates = dedupe_records(parse_report(data, fmt))
+        items: list[IngestionItemResult] = [
+            # Every duplicate is an explicit, visible per-record outcome —
+            # never a silent drop.  Only the log_id is echoed, not content.
+            IngestionItemResult(log_id=log_id, status="duplicate")
+            for log_id in duplicates
+        ]
         normalized_count = 0
         failed_count = 0
         for record in records:
@@ -90,10 +96,11 @@ class IngestionPipeline:
                 )
             )
         return IngestionRunResult(
-            received=len(records),
+            received=len(records) + len(duplicates),
             normalized=normalized_count,
             failed=failed_count,
             items=tuple(items),
+            duplicates=tuple(duplicates),
         )
 
     def validate_records(self, records: Sequence[object]) -> None:

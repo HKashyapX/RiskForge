@@ -132,7 +132,99 @@ def check_xlsx_expansion(data: bytes, *, sheet_cells: int) -> None:
         )
     compressed = max(len(data), 1)
     estimated = sheet_cells * 32  # conservative per-cell XML overhead
-    if estimated // compressed > cap.max_xlsx_expansion_ratio and estimated > cap.max_xlsx_cells:
+    if estimated // compressed > cap.max_xlsx_expansion_ratio:
         raise ResourceLimitError(
             "xlsx: worksheet expansion exceeds the safety ratio; refusing to parse"
         )
+
+
+def check_xlsx_zip_metadata(data: bytes) -> None:
+    """Inspect ZIP metadata before openpyxl sees the workbook.
+
+    Rejects non-ZIP payloads claiming to be XLSX, entries whose declared
+    uncompressed size is absurd relative to the compressed archive (the
+    classic decompression-bomb signature), and archives with an implausible
+    member count.  Runs without extracting anything.
+    """
+    import io
+    import zipfile
+
+    max_uncompressed = limits().max_bytes
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            members = archive.infolist()
+            if len(members) > 512:
+                raise ResourceLimitError(
+                    "xlsx: archive has an implausible member count"
+                )
+            for member in members:
+                declared = member.file_size
+                if declared > max_uncompressed:
+                    raise ResourceLimitError(
+                        f"xlsx: member {member.filename[:32]!r} declares "
+                        f"{declared} uncompressed bytes, above the limit"
+                    )
+                compressed_size = max(member.compress_size, 1)
+                if declared // compressed_size > 1_000 and declared > 1_048_576:
+                    raise ResourceLimitError(
+                        "xlsx: member compression ratio exceeds the "
+                        "decompression-bomb safety threshold"
+                    )
+    except zipfile.BadZipFile as error:
+        raise ResourceLimitError(
+            "xlsx: payload is not a valid ZIP container"
+        ) from error
+
+
+# ── Format-signature validation ───────────────────────────────────────
+
+# Magic-byte signatures for container formats whose parsers would otherwise
+# happily chew arbitrary bytes.  Text formats (csv/tsv/json/jsonl) are
+# validated as decodable text instead of by magic bytes.
+_SIGNATURES: dict[str, tuple[bytes, ...]] = {
+    # XLSX (and legacy XLS) are ZIP containers starting with PK; the OLE2
+    # compound-document header covers .xls workbooks.
+    "xlsx": (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"),
+    "pdf": (b"%PDF-",),
+}
+
+
+def check_format_signature(data: bytes, *, fmt: str) -> None:
+    """Verify the payload's file signature agrees with the declared format.
+
+    Prevents spoofed uploads (a PDF submitted as ``xlsx``, a ZIP bomb as a
+    ``jsonl`` file, arbitrary binary as ``json``) from reaching parsers that
+    assume the declared format's structure.
+    """
+    import json as _json
+
+    signature = _SIGNATURES.get(fmt)
+    if signature is not None:
+        if not data.startswith(signature):
+            raise ResourceLimitError(
+                f"{fmt}: payload does not match the declared format's file signature"
+            )
+        return
+    # Text formats must decode as UTF-8 text; binary masquerading as JSON or
+    # CSV is refused here before any parser runs.
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise ResourceLimitError(
+            f"{fmt}: payload is not decodable text for the declared format"
+        ) from error
+    if fmt in {"json", "jsonl"}:
+        probe = data.lstrip()
+        if probe and fmt == "json" and not probe.startswith((b"{", b"[")):
+            raise ResourceLimitError(
+                "json: payload does not look like a JSON document"
+            )
+        if fmt == "jsonl":
+            for line in data.splitlines()[:1]:
+                stripped = line.strip()
+                if stripped and not stripped.startswith(b"{"):
+                    raise ResourceLimitError(
+                        "jsonl: first record is not a JSON object"
+                    )
+    # csv/tsv: any decodable text is acceptable; structure is the parser's job.
+    _ = _json

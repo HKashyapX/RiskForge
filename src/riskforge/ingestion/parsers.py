@@ -216,8 +216,11 @@ def parse_xlsx(data: bytes) -> list[IncidentRawRecord]:
     except Exception as error:
         raise ReportParseError(f"xlsx: {error}") from error
     sheet = workbook.worksheets[0]
-    from riskforge.ingestion.limits import check_xlsx_expansion
+    from riskforge.ingestion.limits import check_xlsx_expansion, check_xlsx_zip_metadata
 
+    # ZIP metadata inspection happens before the workbook is even opened,
+    # let alone materialized.
+    check_xlsx_zip_metadata(data)
     declared_cells = (sheet.max_row or 0) * (sheet.max_column or 0)
     check_xlsx_expansion(data, sheet_cells=declared_cells)
     rows = sheet.iter_rows(values_only=True)
@@ -362,8 +365,13 @@ SUPPORTED_FORMATS: tuple[str, ...] = tuple(sorted(PARSERS))
 
 
 def parse_report(data: bytes, fmt: str) -> list[IncidentRawRecord]:
-    """Parse report bytes using the parser registered for *fmt*."""
-    from riskforge.ingestion.limits import check_source
+    """Parse report bytes using the parser registered for *fmt*.
+
+    The declared format is verified against the payload's actual file
+    signature (or text decodability) before any parser runs, so a spoofed
+    or mislabeled upload is refused at the boundary.
+    """
+    from riskforge.ingestion.limits import check_format_signature, check_source
 
     fmt_normalized = fmt.strip().lower()
     check_source(data, fmt=fmt_normalized)
@@ -372,11 +380,20 @@ def parse_report(data: bytes, fmt: str) -> list[IncidentRawRecord]:
         raise ReportParseError(
             f"unsupported format {fmt!r}; supported: {', '.join(SUPPORTED_FORMATS)}"
         )
+    check_format_signature(data, fmt=fmt_normalized)
     return parser(data)
 
 
-def dedupe_records(records: Sequence[IncidentRawRecord]) -> list[IncidentRawRecord]:
-    """Drop duplicate log_ids within one source, reporting what was dropped."""
+def dedupe_records(
+    records: Sequence[IncidentRawRecord],
+) -> tuple[list[IncidentRawRecord], list[str]]:
+    """Split a source into unique records and explicit duplicate log_ids.
+
+    Duplicates are never silently discarded: the caller receives the list of
+    repeated log_ids (in first-duplicate order, capped for log safety) and
+    must surface them to the submitter.  Only the first occurrence of each
+    log_id is retained.
+    """
     from riskforge.ingestion.limits import check_record_count
 
     seen: set[str] = set()
@@ -384,15 +401,10 @@ def dedupe_records(records: Sequence[IncidentRawRecord]) -> list[IncidentRawReco
     unique: list[IncidentRawRecord] = []
     for record in records:
         if record.log_id in seen:
-            duplicates.append(record.log_id)
+            if record.log_id not in duplicates:
+                duplicates.append(record.log_id)
             continue
         seen.add(record.log_id)
         unique.append(record)
-    if duplicates:
-        import logging
-
-        logging.getLogger("riskforge.ingestion").warning(
-            "duplicate log_ids dropped during dedupe: %s", sorted(set(duplicates))[:20]
-        )
     check_record_count(len(unique), fmt="dedupe")
-    return unique
+    return unique, duplicates

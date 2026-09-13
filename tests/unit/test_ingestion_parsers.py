@@ -145,6 +145,7 @@ class TestDedupe:
             log_id="D-1", timestamp=timestamp, asset_id="A", asset_type=AssetType.DRILLING_RIG,
             raw_narrative="second",
         )
-        unique = dedupe_records([first, second])
+        unique, duplicates = dedupe_records([first, second])
         assert len(unique) == 1
         assert unique[0].raw_narrative == "first"
+        assert duplicates == ["D-1"]
