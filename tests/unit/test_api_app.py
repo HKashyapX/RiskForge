@@ -85,7 +85,7 @@ class FakeReadiness:
 
 
 def _client(application=None, readiness=None) -> TestClient:
-    principal = Principal(subject_id="unit-user", roles=("reviewer",))
+    principal = Principal(subject_id="unit-user", roles=("reviewer", "ingestor", "safety_officer", "auditor"))
     auth = RolePrincipalAuth(principal)
     app = create_app(application or FakeApplication(), readiness or FakeReadiness(), auth_service=auth)
     from riskforge.api.app import _extract_principal  # noqa: F401
@@ -181,7 +181,7 @@ def test_request_body_limit_rejects_payload_before_application() -> None:
             FakeReadiness(),
             max_request_bytes=64,
             auth_service=RolePrincipalAuth(
-                Principal(subject_id="unit-user", roles=("reviewer",))
+                Principal(subject_id="unit-user", roles=("reviewer", "ingestor", "safety_officer", "auditor"))
             ),
         )
     )
@@ -221,7 +221,7 @@ def test_request_timeout_returns_safe_gateway_timeout() -> None:
             FakeReadiness(),
             request_timeout_seconds=0.001,
             auth_service=RolePrincipalAuth(
-                Principal(subject_id="unit-user", roles=("reviewer",))
+                Principal(subject_id="unit-user", roles=("reviewer", "ingestor", "safety_officer", "auditor"))
             ),
         )
     )
@@ -249,7 +249,7 @@ def test_runtime_batch_limit_can_be_stricter_than_public_contract() -> None:
             FakeReadiness(),
             max_batch_size=1,
             auth_service=RolePrincipalAuth(
-                Principal(subject_id="unit-user", roles=("reviewer",))
+                Principal(subject_id="unit-user", roles=("reviewer", "ingestor", "safety_officer", "auditor"))
             ),
         )
     )

@@ -44,7 +44,12 @@ from riskforge.ingestion.pipeline import IngestionPipeline
 from riskforge.metrics.aggregator import MetricsAggregator
 from riskforge.normalization.gazetteer import SpanPreservingGazetteer
 from riskforge.persistence.exceptions import PersistenceConflictError
-from riskforge.persistence.models import IncidentResultFilter, StoredIncidentResult
+from riskforge.persistence.models import (
+    AuditEvent,
+    AuditEventType,
+    IncidentResultFilter,
+    StoredIncidentResult,
+)
 from riskforge.persistence.models import (
     PageRequest as StorePageRequest,
 )
@@ -388,8 +393,12 @@ class _PersistingApplicationService:
 
     ``POST /v1/inference`` is a scored write: the workflow read routes and the
     review service read exclusively from persistence, so results must be
-    stored idempotently at scoring time.  Scoring, ingestion, and analytics
-    capabilities are declared explicitly on the facade — no dynamic attach.
+    stored idempotently at scoring time.  Every successful scoring action also
+    appends an ``inference_recorded`` audit event carrying the actor, scoring
+    mode, and model/artifact version — audit failures never fail the scored
+    write (governance is best-effort, durability is not).  Scoring, ingestion,
+    and analytics capabilities are declared explicitly on the facade — no
+    dynamic attach.
     """
 
     def __init__(
@@ -398,31 +407,97 @@ class _PersistingApplicationService:
         incidents: IncidentResultRepository,
         scoring_pipeline: _ScoringIngestionPipeline,
         analytics: _StoreAnalytics,
+        audit: AuditEventRepository,
+        *,
+        scoring_mode: str,
+        artifact_version: str | None,
     ) -> None:
         self._core = core
         self._incidents = incidents
         self._scoring_pipeline = scoring_pipeline
         self._analytics = analytics
+        self._audit = audit
+        self._scoring_mode = scoring_mode
+        self._artifact_version = artifact_version
 
     # ── scoring ────────────────────────────────────────────────────────
-    def process_incident(self, record: IncidentNormalizedRecord) -> ModelInferenceResult:
+    def process_incident(
+        self,
+        record: IncidentNormalizedRecord,
+        *,
+        actor_id: str = "system",
+        correlation_id: str | None = None,
+    ) -> ModelInferenceResult:
         result = self._core.process_incident(record)
         self._store(record, result)
+        self._audit_scoring(record, result, actor_id=actor_id, correlation_id=correlation_id)
         return result
 
     def process_batch(
-        self, records: list[IncidentNormalizedRecord]
+        self,
+        records: list[IncidentNormalizedRecord],
+        *,
+        actor_id: str = "system",
+        correlation_id: str | None = None,
     ) -> list[ModelInferenceResult]:
         results = self._core.process_batch(records)
         for record, result in zip(records, results, strict=True):
             self._store(record, result)
+            self._audit_scoring(record, result, actor_id=actor_id, correlation_id=correlation_id)
         return results
 
-    def ingest(self, data: bytes, fmt: str) -> object:
-        return self._scoring_pipeline.ingest(data, fmt)
+    def ingest(
+        self,
+        data: bytes,
+        fmt: str,
+        *,
+        actor_id: str = "system",
+        correlation_id: str | None = None,
+    ) -> object:
+        return self._scoring_pipeline.ingest(
+            data, fmt, actor_id=actor_id, correlation_id=correlation_id
+        )
 
     def analytics_summary(self, timestamp_from: str | None = None, timestamp_to: str | None = None) -> object:
         return self._analytics.summary(timestamp_from, timestamp_to)
+
+    # ── audit ──────────────────────────────────────────────────────────
+    def _audit_scoring(
+        self,
+        record: IncidentNormalizedRecord,
+        result: ModelInferenceResult,
+        *,
+        actor_id: str,
+        correlation_id: str | None,
+    ) -> None:
+        """Append an inference_recorded event; best-effort, never fatal.
+
+        The reason field carries structured provenance (scoring mode, model
+        version, correlation id) without copying the raw narrative.
+        """
+        provenance_parts = [f"scoring_mode={self._scoring_mode}"]
+        if result.model_version:
+            provenance_parts.append(f"model_version={result.model_version}")
+        if result.calibration_version:
+            provenance_parts.append(f"calibration_version={result.calibration_version}")
+        if correlation_id:
+            provenance_parts.append(f"correlation_id={correlation_id}")
+        event = AuditEvent(
+            event_id=f"inference:{record.log_id}:{record.timestamp.isoformat()}",
+            log_id=record.log_id,
+            event_type=AuditEventType.INFERENCE_RECORDED,
+            actor_id=actor_id,
+            occurred_at=record.timestamp,
+            reason="; ".join(provenance_parts),
+        )
+        try:
+            self._audit.append(event)
+        except Exception:
+            logger.warning(
+                "inference audit event could not be appended",
+                extra={"log_id": record.log_id},
+                exc_info=True,
+            )
 
     # ── persistence ────────────────────────────────────────────────────
     def _store(self, record: IncidentNormalizedRecord, result: ModelInferenceResult) -> None:
@@ -454,6 +529,36 @@ class _PersistingApplicationService:
 
     def decide_review(self, command: ReviewCommand) -> ReviewDecisionView:
         return self._core.decide_review(command)
+
+
+def _inference_audit_event(
+    record: IncidentNormalizedRecord,
+    result: ModelInferenceResult,
+    *,
+    actor_id: str,
+    scoring_mode: str,
+    correlation_id: str | None,
+) -> AuditEvent:
+    """Build an inference_recorded governance event for one scored report.
+
+    The reason field carries structured provenance (scoring mode, model and
+    calibration versions, correlation id) without copying the raw narrative.
+    """
+    provenance_parts = [f"scoring_mode={scoring_mode}"]
+    if result.model_version:
+        provenance_parts.append(f"model_version={result.model_version}")
+    if result.calibration_version:
+        provenance_parts.append(f"calibration_version={result.calibration_version}")
+    if correlation_id:
+        provenance_parts.append(f"correlation_id={correlation_id}")
+    return AuditEvent(
+        event_id=f"inference:{record.log_id}:{record.timestamp.isoformat()}",
+        log_id=record.log_id,
+        event_type=AuditEventType.INFERENCE_RECORDED,
+        actor_id=actor_id,
+        occurred_at=record.timestamp,
+        reason="; ".join(provenance_parts),
+    )
 
 
 def _same_decision(
@@ -521,13 +626,26 @@ class _ScoringIngestionPipeline:
         self,
         pipeline: IngestionPipeline,
         incidents: IncidentResultRepository,
+        audit: AuditEventRepository,
+        *,
+        scoring_mode: str,
     ) -> None:
         self._pipeline = pipeline
         self._incidents = incidents
+        self._audit = audit
+        self._scoring_mode = scoring_mode
 
-    def ingest(self, data: bytes, fmt: str) -> object:
+    def ingest(
+        self,
+        data: bytes,
+        fmt: str,
+        *,
+        actor_id: str = "system",
+        correlation_id: str | None = None,
+    ) -> object:
         outcome = self._pipeline.run(data, fmt)
         persisted = 0
+        audit_events: list[AuditEvent] = []
         for item in outcome.items:
             if (
                 item.status == "normalized"
@@ -539,12 +657,30 @@ class _ScoringIngestionPipeline:
                         StoredIncidentResult(incident=item.normalized, result=item.result)
                     )
                     persisted += 1
+                    audit_events.append(
+                        _inference_audit_event(
+                            item.normalized,
+                            item.result,
+                            actor_id=actor_id,
+                            scoring_mode=self._scoring_mode,
+                            correlation_id=correlation_id,
+                        )
+                    )
                 except PersistenceConflictError:
                     stored = self._incidents.get(item.normalized.log_id)
                     if stored is None or not _same_decision(
                         item.normalized, item.result, stored
                     ):
                         raise
+        if audit_events:
+            try:
+                self._audit.append_many(audit_events)
+            except Exception:
+                logger.warning(
+                    "inference audit events could not be appended",
+                    extra={"count": len(audit_events)},
+                    exc_info=True,
+                )
         return outcome
 
 
@@ -566,17 +702,28 @@ class ProductionComposer:
         review_service = ReviewService(incidents, review_writer, _authorizer_from_env())
         backend = BackendApplicationService(core, reader, ReviewServiceAdapter(review_service))
         analytics = _StoreAnalytics(incidents)
-        scoring_pipeline = _ScoringIngestionPipeline(
-            IngestionPipeline(SpanPreservingGazetteer().process, engine),
-            incidents,
-        )
-        scoring = _PersistingApplicationService(backend, incidents, scoring_pipeline, analytics)
-
         scoring_label = (
             ConfigScoringMode.HEURISTIC.value
             if engine_mode == "heuristic"
             else ConfigScoringMode.ONNX_MODEL.value
         )
+        scoring_pipeline = _ScoringIngestionPipeline(
+            IngestionPipeline(SpanPreservingGazetteer().process, engine),
+            incidents,
+            audit,
+            scoring_mode=scoring_label,
+        )
+        artifact_version = engine.model_version if hasattr(engine, "model_version") else None
+        scoring = _PersistingApplicationService(
+            backend,
+            incidents,
+            scoring_pipeline,
+            analytics,
+            audit,
+            scoring_mode=scoring_label,
+            artifact_version=artifact_version,
+        )
+
         components.append(_EngineModeLifecycle(engine_mode, scoring_label))
         return RuntimeAssembly(application=scoring, components=tuple(components))
 

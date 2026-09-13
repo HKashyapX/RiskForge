@@ -39,6 +39,7 @@ class ErrorCode(str, Enum):
     REVIEW_CONFLICT = "review_conflict"
     REVIEW_FORBIDDEN = "review_forbidden"
     REVIEW_UNAVAILABLE = "review_unavailable"
+    SCOPE_FORBIDDEN = "scope_forbidden"
     INTERNAL_ERROR = "internal_error"
     MISSING_CREDENTIALS = "missing_credentials"
     INVALID_CREDENTIALS = "invalid_credentials"

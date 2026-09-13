@@ -14,7 +14,14 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 
-from riskforge.api.dependencies import ReadinessProvider, require_principal
+from riskforge.api.dependencies import (
+    ReadinessProvider,
+    require_analytics_read,
+    require_audit_read,
+    require_incidents_read,
+    require_principal,
+    require_scoring_write,
+)
 from riskforge.api.errors import ErrorCode, TranslatedError, translate_application_error
 from riskforge.api.models import (
     AnalyticsSummaryResponse,
@@ -370,7 +377,7 @@ def create_app(
     @app.post("/v1/inference", response_model=InferenceResponse)
     def infer(
         request: InferenceRequest,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_scoring_write()),  # noqa: B008
     ) -> InferenceResponse:
         logger.debug(
             "inference request",
@@ -392,7 +399,7 @@ def create_app(
     @app.post("/v1/inference/batch", response_model=BatchInferenceResponse)
     def infer_batch(
         request: BatchInferenceRequest,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_scoring_write()),  # noqa: B008
     ) -> BatchInferenceResponse:
         logger.debug(
             "batch inference request",
@@ -428,7 +435,7 @@ def create_app(
             alias="format",
             description="Report format: csv, tsv, json, jsonl, xlsx, or pdf",
         ),
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_scoring_write()),  # noqa: B008
     ) -> IngestionRunResponse:
         """Ingest raw safety reports from an uploaded document.
 
@@ -499,7 +506,7 @@ def create_app(
         correlation_id: CorrelationHeader,
         timestamp_from: datetime | None = None,
         timestamp_to: datetime | None = None,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_analytics_read()),  # noqa: B008
     ) -> AnalyticsSummaryResponse:
         """Operational analytics: SPD, trends, emerging risks, patterns, barriers."""
         analytics = _analytics_capability(application)
@@ -523,7 +530,7 @@ def create_app(
     def incident_explanation(
         log_id: LogIdPath,
         correlation_id: CorrelationHeader,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_incidents_read()),  # noqa: B008
     ) -> dict:
         """Explain an incident's classification: rules, evidence, recommendations."""
         try:
@@ -579,7 +586,7 @@ def create_app(
         routing: RoutingBucket | None = None,
         timestamp_from: datetime | None = None,
         timestamp_to: datetime | None = None,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_incidents_read()),  # noqa: B008
     ) -> IncidentPageResponse:
         try:
             query = IncidentQuery(
@@ -604,7 +611,7 @@ def create_app(
         limit: PageLimit = 50,
         timestamp_from: datetime | None = None,
         timestamp_to: datetime | None = None,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_incidents_read()),  # noqa: B008
     ) -> IncidentPageResponse:
         try:
             page = application.list_incidents(
@@ -623,7 +630,7 @@ def create_app(
     def incident_detail(
         log_id: LogIdPath,
         correlation_id: CorrelationHeader,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_incidents_read()),  # noqa: B008
     ) -> IncidentResponse:
         try:
             incident = application.get_incident(log_id)
@@ -637,7 +644,7 @@ def create_app(
         correlation_id: CorrelationHeader,
         offset: PageOffset = 0,
         limit: PageLimit = 50,
-        principal: Principal = Depends(require_principal),  # noqa: B008
+        principal: Principal = Depends(require_audit_read()),  # noqa: B008
     ) -> AuditPageResponse:
         try:
             page = application.list_audit_events(
@@ -662,7 +669,12 @@ def create_app(
                 "action": body.action,
             },
         )
-        if not principal.has_any_role("reviewer", "safety_officer", "admin"):
+        # Route-level role/scope gate plus the deny-by-default reviewer
+        # subject allow-list inside the review service.
+        if not (
+            principal.has_any_role("reviewer", "safety_officer", "admin")
+            or principal.has_scope("reviews:write")
+        ):
             from riskforge.api.errors import ErrorCode, TranslatedError
 
             raise _ApiFailure(

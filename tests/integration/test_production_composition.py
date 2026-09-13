@@ -36,7 +36,7 @@ def _enable_pilot_auth(monkeypatch, tmp_path) -> None:
 def _auth_headers(**claims) -> dict[str, str]:
     token = mint_hs256_token(
         secret=b"pilot-fixture-signing-secret-0123456789abcdef",
-        roles=["reviewer"],
+        roles=["reviewer", "reader", "ingestor", "auditor"],
         scopes=["incidents:read", "reviews:write"],
         **claims,
     )

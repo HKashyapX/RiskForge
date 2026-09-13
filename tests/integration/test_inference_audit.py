@@ -32,7 +32,7 @@ def client(tmp_path, monkeypatch):
 
 
 def _auth_headers() -> dict[str, str]:
-    token = mint_hs256_token(secret=SECRET, roles=["reviewer"])
+    token = mint_hs256_token(secret=SECRET, roles=["reviewer", "reader", "ingestor", "auditor"])
     return {"X-Correlation-ID": "audit-test", "Authorization": f"Bearer {token}"}
 
 

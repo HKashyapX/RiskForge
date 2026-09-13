@@ -18,7 +18,7 @@ SECRET = b"ingest-fixture-signing-secret-0123456789abcdef"
 
 
 def _auth_headers(**claims) -> dict[str, str]:
-    token = mint_hs256_token(secret=SECRET, roles=["reviewer"], **claims)
+    token = mint_hs256_token(secret=SECRET, roles=["reviewer", "reader", "ingestor", "auditor"], **claims)
     return {**HEADERS, "Authorization": f"Bearer {token}"}
 
 
