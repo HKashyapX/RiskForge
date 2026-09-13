@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import datetime
-from typing import Annotated, Any, Protocol
+from typing import Annotated, Any, Protocol, runtime_checkable
 
 from fastapi import Depends, FastAPI, Header, Path, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -53,22 +53,36 @@ from riskforge.ingestion.exceptions import IngestionError
 from riskforge.observability.middleware import RequestMetricsMiddleware
 
 
+@runtime_checkable
 class IngestionCapable(Protocol):
-    """Narrow capability discovered on the composed application facade."""
+    """Narrow capability declared by the composed application facade."""
 
     def ingest(self, data: bytes, fmt: str) -> object: ...
 
 
-def _ingest_capability(application: BackendApplication) -> Any:
-    """Return the facade's ingest callable, or None when not composed in."""
-    candidate = getattr(application, "ingest", None)
-    return candidate if callable(candidate) else None
+@runtime_checkable
+class AnalyticsCapable(Protocol):
+    """Narrow capability declared by the composed application facade."""
+
+    def analytics_summary(
+        self, timestamp_from: str | None = None, timestamp_to: str | None = None
+    ) -> object: ...
 
 
-def _analytics_capability(application: BackendApplication) -> Any:
-    """Return the facade's analytics callable, or None when not composed in."""
-    candidate = getattr(application, "analytics_summary", None)
-    return candidate if callable(candidate) else None
+def _ingest_capability(application: BackendApplication) -> Callable[[bytes, str], object] | None:
+    """Return the facade's ingest callable via typed conformance, not getattr."""
+    if isinstance(application, IngestionCapable):
+        return application.ingest
+    return None
+
+
+def _analytics_capability(
+    application: BackendApplication,
+) -> Callable[..., object] | None:
+    """Return the facade's analytics callable via typed conformance."""
+    if isinstance(application, AnalyticsCapable):
+        return application.analytics_summary
+    return None
 
 
 logger = logging.getLogger("riskforge.api.app")
@@ -450,6 +464,8 @@ def create_app(
     @app.get("/v1/analytics/summary", response_model=AnalyticsSummaryResponse)
     def analytics_summary(
         correlation_id: CorrelationHeader,
+        timestamp_from: datetime | None = None,
+        timestamp_to: datetime | None = None,
         principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> AnalyticsSummaryResponse:
         """Operational analytics: SPD, trends, emerging risks, patterns, barriers."""
@@ -465,7 +481,7 @@ def create_app(
                 ),
             )
         try:
-            payload = analytics()
+            payload = analytics(timestamp_from, timestamp_to)
         except Exception as error:
             raise _ApiFailure(correlation_id, translate_application_error(error)) from error
         return AnalyticsSummaryResponse(correlation_id=correlation_id, summary=payload)
@@ -553,11 +569,17 @@ def create_app(
         correlation_id: CorrelationHeader,
         offset: PageOffset = 0,
         limit: PageLimit = 50,
+        timestamp_from: datetime | None = None,
+        timestamp_to: datetime | None = None,
         principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> IncidentPageResponse:
         try:
             page = application.list_incidents(
-                IncidentQuery(routing=RoutingBucket.CRITICAL_ESCALATION),
+                IncidentQuery(
+                    routing=RoutingBucket.CRITICAL_ESCALATION,
+                    timestamp_from=timestamp_from,
+                    timestamp_to=timestamp_to,
+                ),
                 PageRequest(offset=offset, limit=limit),
             )
         except Exception as error:

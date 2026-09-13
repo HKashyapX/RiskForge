@@ -20,7 +20,7 @@ interface AnalyticsSummary {
   assets: AnalyticsAsset[];
   weekly_trend: { week_start: string; reports: number; sif_precursors: number; density: number }[];
   emerging_risks: { week_start: string; sif_precursors: number; prior_mean: number; threshold: number; note: string }[];
-  patterns: { rule_combination: string[]; count: number; assets: string[]; example_narratives: string[] }[];
+  patterns: { rule_combination: string[]; count: number; assets: string[]; example_log_ids: string[] }[];
   failed_barriers: { barrier: string; failures: number }[];
 }
 
@@ -32,18 +32,28 @@ function ruleLabel(rule: string): string {
   return rule.replace(/_/g, ' ');
 }
 
-function trendDirection(series: number[]): 'up' | 'down' | 'stable' {
-  if (series.length < 2) return 'stable';
-  const half = Math.floor(series.length / 2);
-  const early = series.slice(0, half).reduce((a, b) => a + b, 0) / Math.max(1, half);
-  const late = series.slice(-half).reduce((a, b) => a + b, 0) / Math.max(1, half);
-  if (late > early * 1.15) return 'up';
-  if (late < early * 0.85) return 'down';
-  return 'stable';
+const TIME_PERIOD_WEEKS: Record<string, number> = {
+  '1w': 1,
+  '1m': 4,
+  '3m': 12,
+  '6m': 26,
+  '1y': 52,
+};
+
+function timePeriodCutoff(timePeriod: string): string | undefined {
+  const weeks = TIME_PERIOD_WEEKS[timePeriod];
+  if (!weeks) return undefined;
+  const cutoff = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000);
+  return cutoff.toISOString();
 }
 
-export async function fetchLiveOverviewData(_timePeriod: string): Promise<OverviewData> {
-  const summary = await apiGet<{ summary: AnalyticsSummary }>('/v1/analytics/summary');
+export async function fetchLiveOverviewData(timePeriod: string): Promise<OverviewData> {
+  // Propagate the selected time period to the backend instead of filtering
+  // (or ignoring) client-side: the timestamp window bounds every aggregate.
+  const timestampFrom = timePeriodCutoff(timePeriod);
+  const summary = await apiGet<{ summary: AnalyticsSummary }>('/v1/analytics/summary', {
+    timestamp_from: timestampFrom,
+  });
   const s = summary.summary;
 
   const kpis = {
@@ -88,9 +98,9 @@ export async function fetchLiveOverviewData(_timePeriod: string): Promise<Overvi
     assetType: asset.asset_type,
     sifPrecursorCount: asset.sif_precursors,
     spdScore: asset.spd * 100,
-    trend: trendDirection(
-      (s.weekly_trend ?? []).map((p) => p.sif_precursors),
-    ) as 'up' | 'down' | 'stable',
+    // Honest semantics until the analytics API exposes per-asset series:
+    // no trend is invented from the global weekly curve.
+    trend: 'stable' as const,
   }));
 
   const topBarriers = (s.failed_barriers ?? []).slice(0, 8).map((barrier) => ({
@@ -109,33 +119,30 @@ export async function fetchLiveOverviewData(_timePeriod: string): Promise<Overvi
     sifRelevance: pattern.count >= 3 ? 'High' : pattern.count >= 2 ? 'Medium' : 'Low',
   }));
 
-  let recentEscalations: RecentEscalationRow[] = [];
-  try {
-    const page = await apiGet<IncidentViewResponse>('/v1/incidents/critical', {
-      offset: '0',
-      limit: '5',
-    });
-    recentEscalations = page.page.items
-      .map((item) => {
-        const mapped = mapIncidentView(item);
-        const score = mapped.inference.calibrated_sif_p_score;
-        const rules = mapped.inference.matched_iogp_rules as LifeSavingRule[];
-        return {
-          logId: mapped.incident.log_id,
-          timestamp: mapped.incident.timestamp,
-          assetId: mapped.incident.asset_id,
-          assetType: mapped.incident.asset_type as string,
-          narrativeSnippet: `${mapped.incident.raw_narrative.substring(0, 100)}...`,
-          calibratedScore: score,
-          deterministicOverride: mapped.inference.deterministic_override,
-          primaryIogpRule: rules[0] ?? 'Unknown',
-        };
-      })
-      .filter((row) => row.timestamp && row.timestamp !== 'Not available');
-  } catch {
-    // Critical queue unavailable (e.g. no data yet); surface an empty table.
-    recentEscalations = [];
-  }
+  // Fail loudly: a dead API must surface as an error state in the UI, never
+  // as a quiet empty table that looks like "no incidents".
+  const page = await apiGet<IncidentViewResponse>('/v1/incidents/critical', {
+    offset: '0',
+    limit: '5',
+    timestamp_from: timestampFrom,
+  });
+  const recentEscalations: RecentEscalationRow[] = page.page.items
+    .map((item) => {
+      const mapped = mapIncidentView(item);
+      const score = mapped.inference.calibrated_sif_p_score;
+      const rules = mapped.inference.matched_iogp_rules as LifeSavingRule[];
+      return {
+        logId: mapped.incident.log_id,
+        timestamp: mapped.incident.timestamp,
+        assetId: mapped.incident.asset_id,
+        assetType: mapped.incident.asset_type as string,
+        narrativeSnippet: `${mapped.incident.raw_narrative.substring(0, 100)}...`,
+        calibratedScore: score,
+        deterministicOverride: mapped.inference.deterministic_override,
+        primaryIogpRule: rules[0] ?? 'Unknown',
+      };
+    })
+    .filter((row) => row.timestamp && row.timestamp !== 'Not available');
 
   return {
     kpis,

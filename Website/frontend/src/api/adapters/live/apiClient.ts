@@ -1,6 +1,18 @@
 const BASE_URL: string =
   (import.meta.env?.VITE_API_BASE_URL as string | undefined) ?? 'http://127.0.0.1:8000';
 
+/**
+ * Bearer token for authenticated deployments (pilot/production).  Set via
+ * VITE_AUTH_TOKEN for browser-held tokens, or resolved by the host app and
+ * registered through `setAuthToken`.  Requests without a token against an
+ * authenticated API surface a 401 to the user — never silently degrade.
+ */
+let authToken: string | undefined = import.meta.env?.VITE_AUTH_TOKEN as string | undefined;
+
+export function setAuthToken(token: string | undefined): void {
+  authToken = token;
+}
+
 let correlationCounter = 0;
 
 export function nextCorrelationId(): string {
@@ -36,9 +48,12 @@ export async function apiGet<T>(path: string, params?: Record<string, string | u
       if (value !== undefined && value !== '') url.searchParams.set(key, value);
     }
   }
-  const response = await fetch(url.toString(), {
-    headers: { 'X-Correlation-ID': correlationId, Accept: 'application/json' },
-  });
+  const headers: Record<string, string> = {
+    'X-Correlation-ID': correlationId,
+    Accept: 'application/json',
+  };
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
+  const response = await fetch(url.toString(), { headers });
   if (!response.ok) {
     let code = `http_${response.status}`;
     let message = `Request failed with status ${response.status}`;

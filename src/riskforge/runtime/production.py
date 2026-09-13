@@ -93,6 +93,17 @@ class ModeCompositionError(RuntimeError):
     """Raised when the deployment mode's requirements cannot be satisfied."""
 
 
+def _parse_window(value: str | None, name: str):
+    from datetime import datetime
+
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as error:
+        raise ModeCompositionError(f"invalid {name}: {value!r}") from error
+
+
 def _iter_stored(
     incidents: IncidentResultRepository,
     incident_filter: IncidentResultFilter | None = None,
@@ -410,8 +421,8 @@ class _PersistingApplicationService:
     def ingest(self, data: bytes, fmt: str) -> object:
         return self._scoring_pipeline.ingest(data, fmt)
 
-    def analytics_summary(self) -> object:
-        return self._analytics.summary()
+    def analytics_summary(self, timestamp_from: str | None = None, timestamp_to: str | None = None) -> object:
+        return self._analytics.summary(timestamp_from, timestamp_to)
 
     # ── persistence ────────────────────────────────────────────────────
     def _store(self, record: IncidentNormalizedRecord, result: ModelInferenceResult) -> None:
@@ -485,13 +496,21 @@ class _EngineModeLifecycle:
 
 
 class _StoreAnalytics:
-    """Analytics over the incident-result store, computed on demand."""
+    """Analytics over the incident-result store, computed on demand.
+
+    An optional time window (ISO timestamps) bounds every aggregate so the
+    dashboard's period selector filters server-side.
+    """
 
     def __init__(self, incidents: IncidentResultRepository) -> None:
         self._incidents = incidents
 
-    def summary(self) -> object:
-        stored = _iter_stored(self._incidents)
+    def summary(self, timestamp_from: str | None = None, timestamp_to: str | None = None) -> object:
+        incident_filter = IncidentResultFilter(
+            timestamp_from=_parse_window(timestamp_from, "timestamp_from"),
+            timestamp_to=_parse_window(timestamp_to, "timestamp_to"),
+        )
+        stored = _iter_stored(self._incidents, incident_filter)
         return compute_summary([(item.incident, item.result) for item in stored]).to_dict()
 
 
