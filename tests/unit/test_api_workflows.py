@@ -121,7 +121,7 @@ class TrustedAuth:
     """Auth service that returns a known trusted reviewer."""
 
     def authenticate(self, credential: str) -> Principal:
-        return Principal(subject_id="trusted-reviewer")
+        return Principal(subject_id="trusted-reviewer", roles=("reviewer",))
 
 
 class RejectingAuth:
@@ -134,7 +134,17 @@ class RejectingAuth:
 
 
 def _client(application: Application, auth_service=None) -> TestClient:
+    if auth_service is None:
+        from riskforge.authentication.principal import Principal
+        from tests.support.auth import RolePrincipalAuth
+
+        auth_service = RolePrincipalAuth(
+            Principal(subject_id="unit-user", roles=("reviewer",))
+        )
     return TestClient(create_app(application, Readiness(), auth_service))
+
+
+_AUTH = {"Authorization": "Bearer valid-token"}
 
 
 def test_incident_queue_and_critical_routes_use_application_filters() -> None:
@@ -142,7 +152,7 @@ def test_incident_queue_and_critical_routes_use_application_filters() -> None:
     client = _client(application)
     response = client.get(
         "/v1/incidents?asset_id=RIG_01&limit=10",
-        headers={"X-Correlation-ID": "queue-1"},
+        headers={"X-Correlation-ID": "queue-1", **_AUTH},
     )
     assert response.status_code == 200
     assert response.json()["page"]["total"] == 1
@@ -150,7 +160,7 @@ def test_incident_queue_and_critical_routes_use_application_filters() -> None:
 
     critical = client.get(
         "/v1/incidents/critical",
-        headers={"X-Correlation-ID": "critical-1"},
+        headers={"X-Correlation-ID": "critical-1", **_AUTH},
     )
     assert critical.status_code == 200
     assert application.last_query.routing is RoutingBucket.CRITICAL_ESCALATION
@@ -159,7 +169,7 @@ def test_incident_queue_and_critical_routes_use_application_filters() -> None:
 def test_incident_queue_rejects_inverted_time_window_safely() -> None:
     response = _client(Application()).get(
         "/v1/incidents?timestamp_from=2026-02-01T00:00:00Z&timestamp_to=2026-01-01T00:00:00Z",
-        headers={"X-Correlation-ID": "queue-1"},
+        headers={"X-Correlation-ID": "queue-1", **_AUTH},
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_request"
@@ -168,13 +178,13 @@ def test_incident_queue_rejects_inverted_time_window_safely() -> None:
 def test_incident_detail_and_audit_history_are_versioned() -> None:
     client = _client(Application())
     detail = client.get(
-        "/v1/incidents/LOG_1", headers={"X-Correlation-ID": "detail-1"}
+        "/v1/incidents/LOG_1", headers={"X-Correlation-ID": "detail-1", **_AUTH}
     )
     assert detail.status_code == 200
     assert detail.json()["incident"]["result"]["log_id"] == "LOG_1"
 
     audit = client.get(
-        "/v1/incidents/LOG_1/audit", headers={"X-Correlation-ID": "audit-1"}
+        "/v1/incidents/LOG_1/audit", headers={"X-Correlation-ID": "audit-1", **_AUTH}
     )
     assert audit.status_code == 200
     assert audit.json()["page"]["items"][0]["event_id"] == "event-1"
@@ -182,7 +192,7 @@ def test_incident_detail_and_audit_history_are_versioned() -> None:
 
 def test_missing_incident_uses_safe_not_found_response() -> None:
     response = _client(Application()).get(
-        "/v1/incidents/missing", headers={"X-Correlation-ID": "detail-1"}
+        "/v1/incidents/missing", headers={"X-Correlation-ID": "detail-1", **_AUTH}
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "incident_not_found"

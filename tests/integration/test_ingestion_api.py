@@ -11,8 +11,15 @@ from riskforge.core.contracts import AssetType, IncidentRawRecord, RoutingBucket
 from riskforge.ingestion.exceptions import ReportValidationError
 from riskforge.ingestion.pipeline import IngestionPipeline
 from riskforge.runtime.production import create_app
+from tests.support.auth import mint_hs256_token
 
 HEADERS = {"X-Correlation-ID": "ingest-test"}
+SECRET = b"ingest-fixture-signing-secret-0123456789abcdef"
+
+
+def _auth_headers(**claims) -> dict[str, str]:
+    token = mint_hs256_token(secret=SECRET, roles=["reviewer"], **claims)
+    return {**HEADERS, "Authorization": f"Bearer {token}"}
 
 
 class _StubEngine:
@@ -90,9 +97,19 @@ class TestPipeline:
 
 @pytest.fixture()
 def client(monkeypatch, tmp_path):
+    monkeypatch.setenv("RISKFORGE_DEPLOYMENT_MODE", "pilot")
     monkeypatch.setenv("RISKFORGE_SQLITE_PATH", str(tmp_path / "ingest.db"))
     monkeypatch.delenv("RISKFORGE_MODEL_PATH", raising=False)
     monkeypatch.delenv("RISKFORGE_MANIFEST_PATH", raising=False)
+    keys_dir = tmp_path / "keys"
+    keys_dir.mkdir(exist_ok=True)
+    (keys_dir / "test-key.key").write_bytes(
+        b"ingest-fixture-signing-secret-0123456789abcdef"
+    )
+    monkeypatch.setenv("RISKFORGE_AUTH_ENABLED", "true")
+    monkeypatch.setenv("RISKFORGE_AUTH_ISSUER", "riskforge-test")
+    monkeypatch.setenv("RISKFORGE_AUTH_AUDIENCE", "riskforge-api")
+    monkeypatch.setenv("RISKFORGE_AUTH_KEYS_DIR", str(keys_dir))
     with TestClient(create_app()) as test_client:
         yield test_client
 
@@ -104,7 +121,7 @@ class TestIngestRoute:
             b"CSV-1,2026-03-01T08:00:00Z,RIG_01,drilling_rig,Worker on an unprotected edge at 12 m while working at height; harness missing\n"
             b"CSV-2,2026-03-02T09:00:00Z,RIG_01,drilling_rig,Routine housekeeping completed near the gate\n"
         )
-        response = client.post("/v1/ingest?format=csv", content=data, headers=HEADERS)
+        response = client.post("/v1/ingest?format=csv", content=data, headers=_auth_headers())
         assert response.status_code == 200
         body = response.json()
         assert (body["received"], body["normalized"], body["failed"]) == (2, 2, 0)
@@ -112,7 +129,7 @@ class TestIngestRoute:
         assert routings["CSV-1"] == RoutingBucket.CRITICAL_ESCALATION.value
         assert routings["CSV-2"] == RoutingBucket.AUTO_DISMISS.value
 
-        queue = client.get("/v1/incidents?limit=10", headers=HEADERS).json()["page"]["items"]
+        queue = client.get("/v1/incidents?limit=10", headers=_auth_headers()).json()["page"]["items"]
         assert {"CSV-1", "CSV-2"} <= {item["incident"]["log_id"] for item in queue}
 
     def test_reingesting_same_file_is_idempotent(self, client):
@@ -120,27 +137,27 @@ class TestIngestRoute:
             b"log_id,timestamp,asset_id,asset_type,raw_narrative\n"
             b"CSV-DUP,2026-03-01T08:00:00Z,RIG_01,drilling_rig,Repeated upload of the same file\n"
         )
-        first = client.post("/v1/ingest?format=csv", content=data, headers=HEADERS)
-        second = client.post("/v1/ingest?format=csv", content=data, headers=HEADERS)
+        first = client.post("/v1/ingest?format=csv", content=data, headers=_auth_headers())
+        second = client.post("/v1/ingest?format=csv", content=data, headers=_auth_headers())
         assert first.status_code == 200 and second.status_code == 200
-        queue = client.get("/v1/incidents?limit=10", headers=HEADERS).json()["page"]["items"]
+        queue = client.get("/v1/incidents?limit=10", headers=_auth_headers()).json()["page"]["items"]
         assert [i["incident"]["log_id"] for i in queue].count("CSV-DUP") == 1
 
     def test_malformed_document_returns_422(self, client):
         response = client.post(
             "/v1/ingest?format=csv",
             content=b"log_id,timestamp\nBROKEN,not-a-date\n",
-            headers=HEADERS,
+            headers=_auth_headers(),
         )
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "invalid_request"
 
     def test_unsupported_format_returns_415(self, client):
         response = client.post(
-            "/v1/ingest?format=docx", content=b"whatever", headers=HEADERS
+            "/v1/ingest?format=docx", content=b"whatever", headers=_auth_headers()
         )
         assert response.status_code == 415
 
     def test_empty_body_returns_422(self, client):
-        response = client.post("/v1/ingest?format=csv", content=b"", headers=HEADERS)
+        response = client.post("/v1/ingest?format=csv", content=b"", headers=_auth_headers())
         assert response.status_code == 422

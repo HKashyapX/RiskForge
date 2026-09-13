@@ -4,6 +4,10 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 
 from riskforge.api.app import create_app
+from riskforge.authentication.principal import Principal
+from tests.support.auth import RolePrincipalAuth
+
+_AUTH = {"Authorization": "Bearer valid-token"}
 from riskforge.api.dependencies import ReadinessSnapshot
 from riskforge.application.exceptions import InferenceApplicationError
 from riskforge.core.contracts import (
@@ -81,7 +85,11 @@ class FakeReadiness:
 
 
 def _client(application=None, readiness=None) -> TestClient:
-    return TestClient(create_app(application or FakeApplication(), readiness or FakeReadiness()))
+    principal = Principal(subject_id="unit-user", roles=("reviewer",))
+    auth = RolePrincipalAuth(principal)
+    app = create_app(application or FakeApplication(), readiness or FakeReadiness(), auth_service=auth)
+    from riskforge.api.app import _extract_principal  # noqa: F401
+    return TestClient(app)
 
 
 def test_health_and_readiness_are_distinct() -> None:
@@ -101,12 +109,14 @@ def test_single_and_batch_inference_use_the_application_boundary() -> None:
     single = client.post(
         "/v1/inference",
         json={"correlation_id": "request-1", "incident": incident.model_dump(mode="json")},
+        headers=_AUTH,
     )
     assert single.status_code == 200
     assert single.json()["result"]["log_id"] == "LOG_1"
 
     batch = client.post(
         "/v1/inference/batch",
+        headers=_AUTH,
         json={
             "correlation_id": "batch-1",
             "incidents": [
@@ -122,7 +132,7 @@ def test_single_and_batch_inference_use_the_application_boundary() -> None:
 def test_asset_summary_uses_correlation_header() -> None:
     response = _client().get(
         "/v1/assets/RIG_01/summary",
-        headers={"X-Correlation-ID": "asset-1"},
+        headers={"X-Correlation-ID": "asset-1", **_AUTH},
     )
     assert response.status_code == 200
     assert response.json()["correlation_id"] == "asset-1"
@@ -138,6 +148,7 @@ def test_application_failures_are_translated_without_detail_leakage() -> None:
             "correlation_id": "request-1",
             "incident": _incident().model_dump(mode="json"),
         },
+        headers=_AUTH,
     )
     assert response.status_code == 503
     assert response.json()["error"] == {
@@ -154,6 +165,7 @@ def test_validation_errors_do_not_echo_invalid_incident_payloads() -> None:
     response = _client().post(
         "/v1/inference",
         json={"correlation_id": "request-1", "incident": incident},
+        headers=_AUTH,
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_request"
@@ -164,8 +176,16 @@ def test_validation_errors_do_not_echo_invalid_incident_payloads() -> None:
 def test_request_body_limit_rejects_payload_before_application() -> None:
     application = FakeApplication()
     client = TestClient(
-        create_app(application, FakeReadiness(), max_request_bytes=64)
+        create_app(
+            application,
+            FakeReadiness(),
+            max_request_bytes=64,
+            auth_service=RolePrincipalAuth(
+                Principal(subject_id="unit-user", roles=("reviewer",))
+            ),
+        )
     )
+    _auth = {"Authorization": "Bearer valid-token"}
 
     response = client.post(
         "/v1/inference",
@@ -173,6 +193,7 @@ def test_request_body_limit_rejects_payload_before_application() -> None:
         headers={
             "content-type": "application/json",
             "X-Correlation-ID": "limit-1",
+            "Authorization": "Bearer valid-token",
         },
     )
 
@@ -199,6 +220,9 @@ def test_request_timeout_returns_safe_gateway_timeout() -> None:
             SlowApplication(),
             FakeReadiness(),
             request_timeout_seconds=0.001,
+            auth_service=RolePrincipalAuth(
+                Principal(subject_id="unit-user", roles=("reviewer",))
+            ),
         )
     )
     response = client.post(
@@ -207,7 +231,7 @@ def test_request_timeout_returns_safe_gateway_timeout() -> None:
             "correlation_id": "timeout-1",
             "incident": _incident().model_dump(mode="json"),
         },
-        headers={"X-Correlation-ID": "timeout-1"},
+        headers={"X-Correlation-ID": "timeout-1", **_AUTH},
     )
 
     assert response.status_code == 504
@@ -220,7 +244,14 @@ def test_request_timeout_returns_safe_gateway_timeout() -> None:
 
 def test_runtime_batch_limit_can_be_stricter_than_public_contract() -> None:
     client = TestClient(
-        create_app(FakeApplication(), FakeReadiness(), max_batch_size=1)
+        create_app(
+            FakeApplication(),
+            FakeReadiness(),
+            max_batch_size=1,
+            auth_service=RolePrincipalAuth(
+                Principal(subject_id="unit-user", roles=("reviewer",))
+            ),
+        )
     )
     response = client.post(
         "/v1/inference/batch",
@@ -231,6 +262,7 @@ def test_runtime_batch_limit_can_be_stricter_than_public_contract() -> None:
                 _incident("LOG_2").model_dump(mode="json"),
             ],
         },
+        headers=_AUTH,
     )
 
     assert response.status_code == 422

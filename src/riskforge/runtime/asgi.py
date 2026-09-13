@@ -24,15 +24,32 @@ def create_managed_app(
     auth_service: AuthenticationService | None = None,
     enable_metrics: bool = True,
     cors_origins: list[str] | None = None,
+    require_authentication: bool = False,
+    deployment_mode: str | None = None,
 ) -> FastAPI:
     """Compose dependencies once and bind their lifecycle to the ASGI app.
 
     Concrete database, encoder, and inference construction remains in the
     injected composer.  The HTTP layer only receives the assembled application
-    facade and a transport-safe readiness adapter.
+    facade and a transport-safe readiness adapter.  When
+    ``require_authentication`` is set, authentication configuration is
+    mandatory — composing without a service fails closed.
     """
 
+    if require_authentication and auth_service is None:
+        from riskforge.runtime.deployment import DeploymentConfigError
+
+        raise DeploymentConfigError(
+            "this deployment mode requires authentication but no "
+            "authentication service is configured; refusing to start"
+        )
+
     assembly = composer.compose(settings)
+    scoring_label = None
+    for component in assembly.components:
+        if component.name == "inference-engine":
+            scoring_label = component.readiness().detail
+            break
     manager = RuntimeManager(
         assembly,
         shutdown_timeout_s=settings.shutdown_timeout_seconds,
@@ -57,6 +74,9 @@ def create_managed_app(
         request_timeout_seconds=settings.request_timeout_seconds,
         max_batch_size=settings.max_batch_size,
         lifespan=lifespan,
+        require_authentication=require_authentication,
+        deployment_mode=deployment_mode,
+        scoring_label=scoring_label,
     )
     app.state.runtime_manager = manager
     app.state.runtime_settings = settings

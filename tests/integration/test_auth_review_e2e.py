@@ -81,7 +81,7 @@ class FakeAuthService:
     """Deterministic auth service for testing."""
 
     def __init__(self, subject_id: str = "test-user") -> None:
-        self._principal = Principal(subject_id=subject_id)
+        self._principal = Principal(subject_id=subject_id, roles=("reviewer",))
         self.calls: list[str] = []
 
     def authenticate(self, credential: str) -> Principal:

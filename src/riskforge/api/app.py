@@ -125,6 +125,9 @@ def create_app(
     request_timeout_seconds: float = 30.0,
     max_batch_size: int = 32,
     lifespan: Callable[[FastAPI], AbstractAsyncContextManager[None]] | None = None,
+    require_authentication: bool = False,
+    deployment_mode: str | None = None,
+    scoring_label: str | None = None,
 ) -> FastAPI:
     """Create the HTTP shell without constructing concrete infrastructure.
 
@@ -204,12 +207,50 @@ def create_app(
         except ImportError:
             logger.warning("prometheus-client not installed; /metrics endpoint disabled")
 
-    # Wire the authentication dependency when a service is provided.
+    # Authentication is fail-closed: modes that require it refuse to serve
+    # without a configured service, and /metrics is wrapped behind the same
+    # credential check so operational telemetry is never public.
+    if require_authentication and auth_service is None:
+        from riskforge.runtime.deployment import DeploymentConfigError
+
+        raise DeploymentConfigError(
+            "authentication is mandatory for this deployment but no "
+            "authentication service is configured; refusing to start"
+        )
+
     if auth_service is not None:
         def _authenticated_principal(request: Request) -> Principal:
             return _extract_principal(auth_service, request)
 
         app.dependency_overrides[require_principal] = _authenticated_principal
+
+        if enable_metrics:
+            try:
+                from prometheus_client import make_asgi_app
+
+                def _guarded_metrics(environ: dict, start_response: Callable) -> Any:
+                    from starlette.requests import Request as StarletteRequest
+
+                    request = StarletteRequest(environ)
+                    try:
+                        _extract_principal(auth_service, request)
+                    except AuthenticationError:
+                        response = JSONResponse(status_code=401, content={"error": {"code": "missing_credentials", "message": "authentication required"}})
+                        start_response("401 Unauthorized", list(response.raw_headers))
+                        return [response.body]
+
+                    return make_asgi_app()(environ, start_response)
+
+                app.mount("/metrics", _guarded_metrics)
+            except ImportError:
+                logger.warning("prometheus-client not installed; /metrics endpoint disabled")
+    elif enable_metrics:
+        try:
+            from prometheus_client import make_asgi_app
+
+            app.mount("/metrics", make_asgi_app())
+        except ImportError:
+            logger.warning("prometheus-client not installed; /metrics endpoint disabled")
 
     @app.exception_handler(_ApiFailure)
     async def handle_api_failure(_request: Request, error: _ApiFailure) -> JSONResponse:
@@ -278,19 +319,27 @@ def create_app(
     )
     def ready(correlation_id: CorrelationHeader) -> ReadinessResponse | JSONResponse:
         snapshot = readiness.snapshot()
+        components = list(snapshot.components)
+        if deployment_mode and "deployment-mode" not in components:
+            components.insert(0, f"deployment-mode:{deployment_mode}")
+        if scoring_label and "scoring" not in " ".join(components):
+            components.append(f"scoring:{scoring_label}")
         response = ReadinessResponse(
             correlation_id=correlation_id,
             ready=snapshot.ready,
             state=snapshot.state,
             checked_at=snapshot.checked_at,
-            components=snapshot.components,
+            components=tuple(components),
         )
         if snapshot.ready:
             return response
         return JSONResponse(status_code=503, content=response.model_dump(mode="json"))
 
     @app.post("/v1/inference", response_model=InferenceResponse)
-    def infer(request: InferenceRequest) -> InferenceResponse:
+    def infer(
+        request: InferenceRequest,
+        principal: Principal = Depends(require_principal),  # noqa: B008
+    ) -> InferenceResponse:
         logger.debug(
             "inference request",
             extra={
@@ -305,7 +354,10 @@ def create_app(
         return InferenceResponse(correlation_id=request.correlation_id, result=result)
 
     @app.post("/v1/inference/batch", response_model=BatchInferenceResponse)
-    def infer_batch(request: BatchInferenceRequest) -> BatchInferenceResponse:
+    def infer_batch(
+        request: BatchInferenceRequest,
+        principal: Principal = Depends(require_principal),  # noqa: B008
+    ) -> BatchInferenceResponse:
         logger.debug(
             "batch inference request",
             extra={
@@ -334,6 +386,7 @@ def create_app(
             alias="format",
             description="Report format: csv, tsv, json, jsonl, xlsx, or pdf",
         ),
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> IngestionRunResponse:
         """Ingest raw safety reports from an uploaded document.
 
@@ -395,7 +448,10 @@ def create_app(
         )
 
     @app.get("/v1/analytics/summary", response_model=AnalyticsSummaryResponse)
-    def analytics_summary(correlation_id: CorrelationHeader) -> AnalyticsSummaryResponse:
+    def analytics_summary(
+        correlation_id: CorrelationHeader,
+        principal: Principal = Depends(require_principal),  # noqa: B008
+    ) -> AnalyticsSummaryResponse:
         """Operational analytics: SPD, trends, emerging risks, patterns, barriers."""
         analytics = _analytics_capability(application)
         if analytics is None:
@@ -415,7 +471,11 @@ def create_app(
         return AnalyticsSummaryResponse(correlation_id=correlation_id, summary=payload)
 
     @app.get("/v1/incidents/{log_id}/explanation")
-    def incident_explanation(log_id: LogIdPath, correlation_id: CorrelationHeader) -> dict:
+    def incident_explanation(
+        log_id: LogIdPath,
+        correlation_id: CorrelationHeader,
+        principal: Principal = Depends(require_principal),  # noqa: B008
+    ) -> dict:
         """Explain an incident's classification: rules, evidence, recommendations."""
         try:
             view = application.get_incident(log_id)
@@ -443,7 +503,9 @@ def create_app(
 
     @app.get("/v1/assets/{asset_id}/summary", response_model=AssetSummaryResponse)
     def asset_summary(
-        asset_id: AssetIdPath, correlation_id: CorrelationHeader
+        asset_id: AssetIdPath,
+        correlation_id: CorrelationHeader,
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> AssetSummaryResponse:
         logger.debug(
             "asset summary request",
@@ -468,6 +530,7 @@ def create_app(
         routing: RoutingBucket | None = None,
         timestamp_from: datetime | None = None,
         timestamp_to: datetime | None = None,
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> IncidentPageResponse:
         try:
             query = IncidentQuery(
@@ -490,6 +553,7 @@ def create_app(
         correlation_id: CorrelationHeader,
         offset: PageOffset = 0,
         limit: PageLimit = 50,
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> IncidentPageResponse:
         try:
             page = application.list_incidents(
@@ -502,7 +566,9 @@ def create_app(
 
     @app.get("/v1/incidents/{log_id}", response_model=IncidentResponse)
     def incident_detail(
-        log_id: LogIdPath, correlation_id: CorrelationHeader
+        log_id: LogIdPath,
+        correlation_id: CorrelationHeader,
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> IncidentResponse:
         try:
             incident = application.get_incident(log_id)
@@ -516,6 +582,7 @@ def create_app(
         correlation_id: CorrelationHeader,
         offset: PageOffset = 0,
         limit: PageLimit = 50,
+        principal: Principal = Depends(require_principal),  # noqa: B008
     ) -> AuditPageResponse:
         try:
             page = application.list_audit_events(
@@ -540,6 +607,18 @@ def create_app(
                 "action": body.action,
             },
         )
+        if not principal.has_any_role("reviewer", "safety_officer", "admin"):
+            from riskforge.api.errors import ErrorCode, TranslatedError
+
+            raise _ApiFailure(
+                body.correlation_id,
+                TranslatedError(
+                    status_code=403,
+                    code=ErrorCode.REVIEW_FORBIDDEN,
+                    message="authenticated principal lacks a reviewer role",
+                    retryable=False,
+                ),
+            )
         command = ReviewCommand(
             log_id=log_id,
             decision_id=body.decision_id,

@@ -1,21 +1,23 @@
-"""Environment-driven production dependency composition.
+"""Mode-aware production dependency composition.
 
-Assembles the complete backend: persistence (SQLite by default, PostgreSQL
-when ``RISKFORGE_PERSISTENCE=postgres``), the inference engine (ONNX artifact
-when configured, deterministic heuristic engine otherwise), workflow adapters,
-review service, and metrics.  Implements the ``DependencyComposer`` protocol
-consumed by ``riskforge.runtime.asgi.create_managed_app``.
+Assembles the complete backend according to the explicit deployment mode
+(``riskforge.runtime.deployment``):
 
-This module contains no business logic: it only wires established subsystem
-boundaries together.  The engine mode is surfaced honestly through readiness
-so deployments never silently claim model-backed inference they do not have.
+- persistence (SQLite for demo/pilot, mandatory PostgreSQL for production)
+- inference engine (ONNX artifact where required/configured; the deterministic
+  heuristic engine only where the mode explicitly permits it, always labelled)
+- a concrete incident encoder whenever a model artifact serves traffic
+- workflow adapters, deny-by-default review authorization, and metrics
+
+The composer uses explicit, typed construction only — no monkey-patching and
+no ``getattr`` capability discovery.  Every engine is wrapped so the scoring
+mode is enforced on results, and readiness reports the honest engine label.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,12 +38,16 @@ from riskforge.core.contracts import (
     AssetRiskSummary,
     IncidentNormalizedRecord,
     ModelInferenceResult,
+    ScoringMode,
 )
 from riskforge.ingestion.pipeline import IngestionPipeline
 from riskforge.metrics.aggregator import MetricsAggregator
+from riskforge.normalization.gazetteer import SpanPreservingGazetteer
 from riskforge.persistence.exceptions import PersistenceConflictError
 from riskforge.persistence.models import IncidentResultFilter, StoredIncidentResult
-from riskforge.persistence.models import PageRequest as StorePageRequest
+from riskforge.persistence.models import (
+    PageRequest as StorePageRequest,
+)
 from riskforge.persistence.protocols import (
     AuditEventRepository,
     IncidentResultRepository,
@@ -51,8 +57,7 @@ from riskforge.persistence.sqlite.repository import (
     SQLiteIncidentResultRepository,
 )
 from riskforge.persistence.sqlite.review_audit import SQLiteReviewAuditWriter
-from riskforge.review.authorizer import AllowAllReviewerAuthorizer
-from riskforge.review.protocols import ReviewerAuthorizer
+from riskforge.review.authorizer import SubjectAllowlistReviewerAuthorizer
 from riskforge.review.service import ReviewService
 from riskforge.runtime.contracts import (
     ComponentReadiness,
@@ -60,16 +65,23 @@ from riskforge.runtime.contracts import (
     RuntimeAssembly,
     RuntimeSettings,
 )
+from riskforge.runtime.deployment import (
+    DeploymentConfig,
+    DeploymentConfigError,
+    DeploymentMode,
+)
+from riskforge.runtime.deployment import (
+    ScoringMode as ConfigScoringMode,
+)
 from riskforge.runtime.workflow_adapters import (
     PersistenceWorkflowReader,
     ReviewServiceAdapter,
 )
+from riskforge.serving.engine import ONNXInferenceEngine
 from riskforge.serving.heuristic_engine import HeuristicRuleEngine
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
-
-from riskforge.normalization.gazetteer import SpanPreservingGazetteer
 
 logger = logging.getLogger("riskforge.runtime.production")
 
@@ -77,11 +89,15 @@ _ENGINE_MODE_COMPONENT = "inference-engine"
 _PAGE_LIMIT = 500  # persistence PageRequest hard cap; scans must paginate
 
 
+class ModeCompositionError(RuntimeError):
+    """Raised when the deployment mode's requirements cannot be satisfied."""
+
+
 def _iter_stored(
     incidents: IncidentResultRepository,
     incident_filter: IncidentResultFilter | None = None,
 ) -> list[StoredIncidentResult]:
-    """Page through the whole store (bounded) respecting the 500-item cap."""
+    """Page through the store (bounded) respecting the 500-item cap."""
     collected: list[StoredIncidentResult] = []
     offset = 0
     incident_filter = incident_filter or IncidentResultFilter()
@@ -100,58 +116,207 @@ def _sqlite_database_path() -> Path:
     return Path(os.environ.get("RISKFORGE_SQLITE_PATH", "data/riskforge.db"))
 
 
-def _build_engine(settings: RuntimeSettings) -> InferenceEngine:
-    """Build the inference engine the deployment actually has.
+class _ModeEnforcingEngine:
+    """Engine wrapper that stamps the deployment's scoring mode on results.
 
-    When a model artifact and manifest are configured AND exist, use the real
-    ONNX engine.  When neither is configured, fall back to the deterministic
-    heuristic engine (logged loudly, surfaced via readiness).  A configured-
-    but-missing artifact is a hard startup error rather than a silent
-    downgrade, and half-configuration is rejected.
+    The wrapper refuses results whose self-declared scoring mode contradicts
+    the deployment mode: model modes reject heuristic results (the reverse of
+    a silent fallback), and heuristic-permitted modes reject unlabeled model
+    results.
+    """
+
+    engine_name: str
+    mode: str
+
+    def __init__(self, inner: InferenceEngine, scoring_mode: ScoringMode) -> None:
+        self._inner = inner
+        self._scoring_mode = scoring_mode
+        self.engine_name = getattr(
+            inner, "engine_name", "onnx-inference-engine"
+        )
+        self.mode = (
+            "onnx-model" if scoring_mode is ScoringMode.ONNX_MODEL else "heuristic"
+        )
+
+    def infer(self, record: IncidentNormalizedRecord) -> ModelInferenceResult:
+        result = self._inner.infer(record)
+        return self._enforce(result)
+
+    def infer_batch(
+        self, records: list[IncidentNormalizedRecord]
+    ) -> list[ModelInferenceResult]:
+        return [self._enforce(result) for result in self._inner.infer_batch(records)]
+
+    def _enforce(self, result: ModelInferenceResult) -> ModelInferenceResult:
+        if self._scoring_mode is ScoringMode.ONNX_MODEL:
+            if result.scoring_mode is not ScoringMode.ONNX_MODEL:
+                raise ModeCompositionError(
+                    "model-backed deployment received a non-model scoring "
+                    f"result for {result.log_id}; refusing to serve it"
+                )
+            return result
+        if result.scoring_mode is not ScoringMode.HEURISTIC:
+            raise ModeCompositionError(
+                "heuristic deployment received a model scoring result for "
+                f"{result.log_id}; refusing to serve it"
+            )
+        return result
+
+
+class _ModelInferenceEngine:
+    """Model-backed engine built through the application adapter layer.
+
+    Record-to-tensor conversion lives in the injected encoder; this class is
+    a thin ``ServingInferenceAdapter`` binding so the application protocol
+    sees one consistent engine interface regardless of backend.
+    """
+
+    engine_name = "onnx-inference-engine"
+    mode = "onnx-model"
+
+    def __init__(self, engine: ONNXInferenceEngine, encoder: object) -> None:
+        from riskforge.application.inference_adapter import ServingInferenceAdapter
+
+        self._adapter = ServingInferenceAdapter(engine, encoder)  # type: ignore[arg-type]
+
+    def infer(self, record: IncidentNormalizedRecord) -> ModelInferenceResult:
+        return self._adapter.infer(record)
+
+    def infer_batch(
+        self, records: list[IncidentNormalizedRecord]
+    ) -> list[ModelInferenceResult]:
+        return list(self._adapter.infer_batch(records))
+
+
+def _build_model_engine(settings: RuntimeSettings) -> _ModelInferenceEngine:
+    """Build the ONNX engine plus encoder, validating every artifact field.
+
+    Requires ``RISKFORGE_MODEL_PATH``, ``RISKFORGE_MANIFEST_PATH``,
+    ``RISKFORGE_TOKENIZER_NAME`` and (for production-grade posture)
+    ``RISKFORGE_MODEL_MAX_SEQ_LEN`` where it matters.  Any missing or
+    incompatible piece is a hard startup failure — never a fallback.
     """
     model_path = os.environ.get("RISKFORGE_MODEL_PATH", "").strip()
     manifest_path = os.environ.get("RISKFORGE_MANIFEST_PATH", "").strip()
-    if model_path and manifest_path:
-        if not Path(model_path).is_file() or not Path(manifest_path).is_file():
-            raise RuntimeError(
-                f"configured model artifact not found: {model_path!s}, {manifest_path!s}"
-            )
-        from riskforge.serving.engine import ONNXInferenceEngine
+    tokenizer_name = os.environ.get("RISKFORGE_TOKENIZER_NAME", "").strip()
+    if not model_path or not manifest_path or not tokenizer_name:
+        raise ModeCompositionError(
+            "model-backed scoring requires RISKFORGE_MODEL_PATH, "
+            "RISKFORGE_MANIFEST_PATH, and RISKFORGE_TOKENIZER_NAME"
+        )
+    if not Path(model_path).is_file() or not Path(manifest_path).is_file():
+        raise ModeCompositionError(
+            f"configured model artifact not found: {model_path!s}, {manifest_path!s}"
+        )
+    from riskforge.serving.artifact import ModelArtifactManifest
 
+    try:
+        manifest = ModelArtifactManifest.load(manifest_path)
+    except Exception as error:
+        raise ModeCompositionError(f"artifact manifest invalid: {error}") from error
+    if tokenizer_name != manifest.backbone:
+        raise ModeCompositionError(
+            f"RISKFORGE_TOKENIZER_NAME {tokenizer_name!r} does not match the "
+            f"artifact manifest backbone {manifest.backbone!r}"
+        )
+    try:
         engine = ONNXInferenceEngine.from_artifact(
             model_path,
             manifest_path,
             max_batch_size=settings.max_batch_size,
             inference_timeout_s=settings.request_timeout_seconds,
         )
-        logger.info("inference engine: ONNX model artifact (%s)", model_path)
-        return engine
-    if model_path or manifest_path:
-        raise RuntimeError(
-            "RISKFORGE_MODEL_PATH and RISKFORGE_MANIFEST_PATH must be configured together"
-        )
-    logger.warning(
-        "RISKFORGE_MODEL_PATH/RISKFORGE_MANIFEST_PATH not configured; using the "
-        "deterministic heuristic rule engine (no trained model artifact)"
+    except Exception as error:
+        raise ModeCompositionError(f"model artifact failed validation: {error}") from error
+    from riskforge.encoding.tokenizer_encoder import HFIncidentEncoder
+
+    try:
+        encoder = HFIncidentEncoder(tokenizer_name, manifest.max_sequence_length)
+    except Exception as error:
+        raise ModeCompositionError(f"incident encoder failed to initialize: {error}") from error
+    return _ModelInferenceEngine(engine, encoder)
+
+
+def _build_engine(
+    settings: RuntimeSettings, config: DeploymentConfig
+) -> tuple[_ModeEnforcingEngine, str]:
+    """Build the engine the mode demands; never silently downgrade.
+
+    production: model artifact + encoder mandatory.
+    pilot: model artifact when configured (missing configured artifact is an
+    error); otherwise the explicitly-selected heuristic engine, labelled.
+    demo: heuristic engine only (no artifact is trusted in demo).
+    """
+    model_configured = bool(
+        os.environ.get("RISKFORGE_MODEL_PATH", "").strip()
+        or os.environ.get("RISKFORGE_MANIFEST_PATH", "").strip()
     )
-    return HeuristicRuleEngine()
+    if config.require_model_artifact:
+        if not model_configured:
+            raise ModeCompositionError(
+                "production mode requires a validated model artifact: set "
+                "RISKFORGE_MODEL_PATH, RISKFORGE_MANIFEST_PATH, and "
+                "RISKFORGE_TOKENIZER_NAME; heuristic fallback is unavailable"
+            )
+        inner = _build_model_engine(settings)
+        wrapped = _ModeEnforcingEngine(inner, ScoringMode.ONNX_MODEL)
+        return wrapped, "onnx-model"
+    if model_configured:
+        # Half-configuration is always an error.
+        model_path = os.environ.get("RISKFORGE_MODEL_PATH", "").strip()
+        manifest_path = os.environ.get("RISKFORGE_MANIFEST_PATH", "").strip()
+        if not (model_path and manifest_path):
+            raise ModeCompositionError(
+                "RISKFORGE_MODEL_PATH and RISKFORGE_MANIFEST_PATH must be "
+                "configured together"
+            )
+        inner = _build_model_engine(settings)
+        wrapped = _ModeEnforcingEngine(inner, ScoringMode.ONNX_MODEL)
+        return wrapped, "onnx-model"
+    if config.allow_heuristic_engine:
+        engine = HeuristicRuleEngine()
+        logger.warning(
+            "using the deterministic heuristic rule engine (mode=%s); scores "
+            "are rule-based, not model probabilities",
+            config.mode.value,
+        )
+        return _ModeEnforcingEngine(engine, ScoringMode.HEURISTIC), "heuristic"
+    raise ModeCompositionError(
+        "production mode requires a validated model artifact; heuristic "
+        "fallback is not available"
+    )
 
 
-def _authorizer_from_env() -> ReviewerAuthorizer:
-    level = os.environ.get("RISKFORGE_REVIEW_AUTHORIZATION", "allow_all").strip().lower()
-    if level == "allow_all":
-        return AllowAllReviewerAuthorizer()
-    raise RuntimeError(f"unsupported RISKFORGE_REVIEW_AUTHORIZATION policy: {level!r}")
+def _authorizer_from_env() -> SubjectAllowlistReviewerAuthorizer:
+    """Deny-by-default review authorization from the subject allow-list.
+
+    ``RISKFORGE_REVIEWER_SUBJECTS`` is a comma-separated list of authenticated
+    subject ids permitted to record review decisions.  When unset, every
+    review is denied — deployments must explicitly name their reviewers.
+    """
+    subjects_env = os.environ.get("RISKFORGE_REVIEWER_SUBJECTS", "").strip()
+    subjects = {subject.strip() for subject in subjects_env.split(",") if subject.strip()}
+    if not subjects:
+        logger.warning(
+            "RISKFORGE_REVIEWER_SUBJECTS unset; all review decisions will be denied"
+        )
+    return SubjectAllowlistReviewerAuthorizer(allowed_subjects=subjects)
 
 
-def _build_persistence() -> tuple[
+def _build_persistence(
+    config: DeploymentConfig,
+) -> tuple[
     IncidentResultRepository,
     AuditEventRepository,
     SQLiteReviewAuditWriter,
     list[LifecycleComponent],
 ]:
-    """Build persistence repositories plus any lifecycle components."""
+    """Build persistence; production mandates PostgreSQL and fails closed."""
     backend = os.environ.get("RISKFORGE_PERSISTENCE", "sqlite").strip().lower()
+    if config.mode is DeploymentMode.PRODUCTION and backend != "postgres":
+        raise ModeCompositionError(
+            "production mode requires RISKFORGE_PERSISTENCE=postgres"
+        )
     if backend == "postgres":
         from riskforge.persistence.postgres import (
             PostgresAuditEventRepository,
@@ -163,10 +328,10 @@ def _build_persistence() -> tuple[
         from riskforge.persistence.postgres.migrate import run_migrations
         from riskforge.runtime.persistence_adapter import PostgresPoolLifecycle
 
-        config = PostgresConfig()
+        config_pg = PostgresConfig()
         applied = run_migrations()
         logger.info("postgres migrations applied: %s", applied)
-        pool = PostgresConnectionPool(config)
+        pool = PostgresConnectionPool(config_pg)
         return (
             PostgresIncidentResultRepository(pool),
             PostgresAuditEventRepository(pool),
@@ -174,7 +339,9 @@ def _build_persistence() -> tuple[
             [PostgresPoolLifecycle(pool)],
         )
     if backend != "sqlite":
-        raise RuntimeError(f"unsupported RISKFORGE_PERSISTENCE backend: {backend!r}")
+        raise ModeCompositionError(f"unsupported RISKFORGE_PERSISTENCE backend: {backend!r}")
+    if config.mode is DeploymentMode.PRODUCTION:
+        raise ModeCompositionError("production mode requires PostgreSQL")
 
     db_path = _sqlite_database_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -185,11 +352,7 @@ def _build_persistence() -> tuple[
 
 
 class _StoreMetricsService:
-    """MetricsService adapter computing per-asset summaries from persistence.
-
-    Aggregates every stored result for an asset (bounded by a scan limit) so
-    analytics reflect the full operational history rather than a single call.
-    """
+    """MetricsService adapter computing per-asset summaries from persistence."""
 
     def __init__(self, incidents: IncidentResultRepository) -> None:
         self._incidents = incidents
@@ -201,7 +364,7 @@ class _StoreMetricsService:
         results = [item.result for item in stored]
         mapping = {
             item.incident.log_id: (item.incident.asset_id, item.incident.asset_type)
-            for item in stored.items
+            for item in stored
         }
         summaries = MetricsAggregator(min_barrier_recurrence=2).compute(results, mapping)
         if not summaries:
@@ -214,33 +377,48 @@ class _PersistingApplicationService:
 
     ``POST /v1/inference`` is a scored write: the workflow read routes and the
     review service read exclusively from persistence, so results must be
-    stored idempotently at scoring time.
+    stored idempotently at scoring time.  Scoring, ingestion, and analytics
+    capabilities are declared explicitly on the facade — no dynamic attach.
     """
 
     def __init__(
         self,
         core: BackendApplicationService,
         incidents: IncidentResultRepository,
+        scoring_pipeline: _ScoringIngestionPipeline,
+        analytics: _StoreAnalytics,
     ) -> None:
         self._core = core
         self._incidents = incidents
+        self._scoring_pipeline = scoring_pipeline
+        self._analytics = analytics
 
+    # ── scoring ────────────────────────────────────────────────────────
     def process_incident(self, record: IncidentNormalizedRecord) -> ModelInferenceResult:
         result = self._core.process_incident(record)
         self._store(record, result)
         return result
 
     def process_batch(
-        self, records: Sequence[IncidentNormalizedRecord]
-    ) -> tuple[ModelInferenceResult, ...]:
+        self, records: list[IncidentNormalizedRecord]
+    ) -> list[ModelInferenceResult]:
         results = self._core.process_batch(records)
         for record, result in zip(records, results, strict=True):
             self._store(record, result)
-        return tuple(results)
+        return results
 
+    def ingest(self, data: bytes, fmt: str) -> object:
+        return self._scoring_pipeline.ingest(data, fmt)
+
+    def analytics_summary(self) -> object:
+        return self._analytics.summary()
+
+    # ── persistence ────────────────────────────────────────────────────
     def _store(self, record: IncidentNormalizedRecord, result: ModelInferenceResult) -> None:
         try:
-            self._incidents.create_idempotent(StoredIncidentResult(incident=record, result=result))
+            self._incidents.create_idempotent(
+                StoredIncidentResult(incident=record, result=result)
+            )
         except PersistenceConflictError:
             # Re-submitting the same report is idempotent only when the stored
             # decision matches the fresh one; latency_ms is timing noise and
@@ -250,6 +428,7 @@ class _PersistingApplicationService:
                 return
             raise
 
+    # ── read/workflow delegation ───────────────────────────────────────
     def get_asset_summary(self, asset_id: str) -> AssetRiskSummary:
         return self._core.get_asset_summary(asset_id)
 
@@ -281,21 +460,28 @@ def _same_decision(
 class _EngineModeLifecycle:
     """Expose the active inference-engine mode through readiness."""
 
-    def __init__(self, engine_mode: str) -> None:
+    def __init__(self, engine_mode: str, scoring_label: str) -> None:
         self._engine_mode = engine_mode
+        self._scoring_label = scoring_label
 
     @property
     def name(self) -> str:
         return _ENGINE_MODE_COMPONENT
 
     def start(self) -> None:
-        logger.info("inference engine mode: %s", self._engine_mode)
+        logger.info(
+            "inference engine mode: %s (%s)", self._engine_mode, self._scoring_label
+        )
 
     def stop(self) -> None:
         return None
 
     def readiness(self) -> ComponentReadiness:
-        return ComponentReadiness(name=self.name, ready=True, detail=self._engine_mode)
+        return ComponentReadiness(
+            name=self.name,
+            ready=True,
+            detail=f"{self._engine_mode} [{self._scoring_label}]",
+        )
 
 
 class _StoreAnalytics:
@@ -324,7 +510,11 @@ class _ScoringIngestionPipeline:
         outcome = self._pipeline.run(data, fmt)
         persisted = 0
         for item in outcome.items:
-            if item.status == "normalized" and item.normalized is not None and item.result is not None:
+            if (
+                item.status == "normalized"
+                and item.normalized is not None
+                and item.result is not None
+            ):
                 try:
                     self._incidents.create_idempotent(
                         StoredIncidentResult(incident=item.normalized, result=item.result)
@@ -342,37 +532,41 @@ class _ScoringIngestionPipeline:
 class ProductionComposer:
     """Assemble the complete application facade and lifecycle components.
 
-    Composition order: persistence first (independent of the engine), then
-    metrics over the store, then scoring, then the transport facade.
+    Composition order: persistence (mode-gated), then metrics over the store,
+    then scoring, then the transport facade.  Every capability is declared
+    explicitly on the facade class.
     """
 
     def compose(self, settings: RuntimeSettings) -> RuntimeAssembly:
-        engine = _build_engine(settings)
-        engine_mode = getattr(engine, "mode", "onnx-model")
-
-        incidents, audit, review_writer, components = _build_persistence()
+        config = DeploymentConfig.from_env()
+        incidents, audit, review_writer, components = _build_persistence(config)
+        engine, engine_mode = _build_engine(settings, config)
         metrics = _StoreMetricsService(incidents)
         core = ApplicationService(engine, metrics)
         reader = PersistenceWorkflowReader(incidents, audit)
         review_service = ReviewService(incidents, review_writer, _authorizer_from_env())
         backend = BackendApplicationService(core, reader, ReviewServiceAdapter(review_service))
-        scoring = _PersistingApplicationService(backend, incidents)
         analytics = _StoreAnalytics(incidents)
-        ingestion = _ScoringIngestionPipeline(
+        scoring_pipeline = _ScoringIngestionPipeline(
             IngestionPipeline(SpanPreservingGazetteer().process, engine),
             incidents,
         )
-        scoring.ingest = ingestion.ingest  # type: ignore[method-assign]
-        scoring.analytics_summary = analytics.summary  # type: ignore[method-assign]
+        scoring = _PersistingApplicationService(backend, incidents, scoring_pipeline, analytics)
 
-        components.append(_EngineModeLifecycle(engine_mode))
+        scoring_label = (
+            ConfigScoringMode.HEURISTIC.value
+            if engine_mode == "heuristic"
+            else ConfigScoringMode.ONNX_MODEL.value
+        )
+        components.append(_EngineModeLifecycle(engine_mode, scoring_label))
         return RuntimeAssembly(application=scoring, components=tuple(components))
 
 
 def create_app() -> FastAPI:
-    """Uvicorn-compatible ASGI factory for production composition."""
+    """Uvicorn-compatible ASGI factory for mode-aware composition."""
     from riskforge.runtime.asgi import create_managed_app
 
+    config = DeploymentConfig.from_env()
     settings = RuntimeSettings(
         model_path=Path(os.environ.get("RISKFORGE_MODEL_PATH", "unused.onnx")),
         manifest_path=Path(os.environ.get("RISKFORGE_MANIFEST_PATH", "unused.yaml")),
@@ -384,7 +578,16 @@ def create_app() -> FastAPI:
     if cors and cors != "*":
         origins = [origin.strip() for origin in cors.split(",") if origin.strip()]
     auth_service = None
-    if os.environ.get("RISKFORGE_AUTH_ENABLED", "").strip().lower() in {"1", "true", "yes"}:
+    if config.require_auth:
+        if os.environ.get("RISKFORGE_AUTH_ENABLED", "").strip().lower() not in {
+            "1",
+            "true",
+            "yes",
+        }:
+            raise DeploymentConfigError(
+                f"{config.mode.value} mode requires RISKFORGE_AUTH_ENABLED=true "
+                "and a fully configured JwtAuthenticationService"
+            )
         from riskforge.authentication.jwt_service import JwtAuthenticationService
 
         auth_service = JwtAuthenticationService.from_env()
@@ -393,4 +596,7 @@ def create_app() -> FastAPI:
         ProductionComposer(),
         auth_service=auth_service,
         cors_origins=origins,
+        enable_metrics=config.public_metrics,
+        require_authentication=config.require_auth,
+        deployment_mode=config.mode.value,
     )

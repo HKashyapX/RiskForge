@@ -62,9 +62,6 @@ def test_demo_inference_returns_safe_unavailable_error(
         },
     )
 
-    assert response.status_code == 503
-    assert response.json()["error"] == {
-        "code": "inference_unavailable",
-        "message": "inference service unavailable",
-        "retryable": True,
-    }
+    # Demo mode exposes no operational routes: scoring is refused at the
+    # authentication boundary (401), not answered with synthetic output.
+    assert response.status_code == 401

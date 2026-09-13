@@ -419,5 +419,39 @@ class JwtAuthenticationService:
         if not isinstance(sub, str) or not sub or len(sub) > 128:
             raise InvalidCredentialsError()
 
-        # --- 12. Return ---
-        return Principal(subject_id=sub)
+        # --- 12. nbf (not-before) ---
+        nbf = payload.get("nbf")
+        if nbf is not None and not isinstance(nbf, bool):
+            if not isinstance(nbf, (int, float)) or not math.isfinite(float(nbf)):
+                raise MalformedCredentialError()
+            if now < float(nbf) - self._leeway:
+                raise InvalidCredentialsError()
+
+        # --- 13. Roles/scopes (optional, deny-by-default) ---
+        roles = self._extract_roles(payload)
+        scopes = self._extract_scopes(payload)
+
+        # --- 14. Return ---
+        return Principal(subject_id=sub, roles=roles, scopes=scopes)
+
+    @staticmethod
+    def _extract_roles(payload: Mapping[str, object]) -> tuple[str, ...]:
+        """Extract role names from the ``roles`` claim; deny on malformed."""
+        raw = payload.get("roles")
+        if raw is None:
+            return ()
+        if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+            raise MalformedCredentialError()
+        if len(raw) > 64 or any(len(role) > 64 for role in raw):
+            raise MalformedCredentialError()
+        return tuple(sorted(set(raw)))
+
+    @staticmethod
+    def _extract_scopes(payload: Mapping[str, object]) -> tuple[str, ...]:
+        """Extract space-separated scopes from the ``scope`` claim."""
+        raw = payload.get("scope")
+        if raw is None:
+            return ()
+        if not isinstance(raw, str) or len(raw) > 2_048:
+            raise MalformedCredentialError()
+        return tuple(sorted({scope for scope in raw.split(" ") if scope}))

@@ -6,8 +6,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from riskforge.runtime.production import create_app
+from tests.support.auth import mint_hs256_token
 
 HEADERS = {"X-Correlation-ID": "analytics-test"}
+SECRET = b"analytics-fixture-signing-secret-01234567"
+
+
+def _auth_headers(**claims) -> dict[str, str]:
+    token = mint_hs256_token(secret=SECRET, roles=["reviewer"], **claims)
+    return {**HEADERS, "Authorization": f"Bearer {token}"}
 
 NARRATIVES = [
     ("E-1", "RIG_01", "2026-06-01T08:00:00Z", "Worker on unprotected edge at 15 m; harness missing; working at height."),
@@ -21,9 +28,17 @@ NARRATIVES = [
 
 @pytest.fixture()
 def client(monkeypatch, tmp_path):
+    monkeypatch.setenv("RISKFORGE_DEPLOYMENT_MODE", "pilot")
     monkeypatch.setenv("RISKFORGE_SQLITE_PATH", str(tmp_path / "analytics.db"))
     monkeypatch.delenv("RISKFORGE_MODEL_PATH", raising=False)
     monkeypatch.delenv("RISKFORGE_MANIFEST_PATH", raising=False)
+    keys_dir = tmp_path / "keys"
+    keys_dir.mkdir(exist_ok=True)
+    (keys_dir / "test-key.key").write_bytes(SECRET)
+    monkeypatch.setenv("RISKFORGE_AUTH_ENABLED", "true")
+    monkeypatch.setenv("RISKFORGE_AUTH_ISSUER", "riskforge-test")
+    monkeypatch.setenv("RISKFORGE_AUTH_AUDIENCE", "riskforge-api")
+    monkeypatch.setenv("RISKFORGE_AUTH_KEYS_DIR", str(keys_dir))
     with TestClient(create_app()) as test_client:
         lines = [
             (
@@ -34,7 +49,9 @@ def client(monkeypatch, tmp_path):
             for log_id, asset, ts, narrative in NARRATIVES
         ]
         response = test_client.post(
-            "/v1/ingest?format=jsonl", content=("\n".join(lines) + "\n").encode(), headers=HEADERS
+            "/v1/ingest?format=jsonl",
+            content=("\n".join(lines) + "\n").encode(),
+            headers=_auth_headers(),
         )
         assert response.status_code == 200
         assert response.json()["normalized"] == len(NARRATIVES)
@@ -43,7 +60,7 @@ def client(monkeypatch, tmp_path):
 
 class TestAnalyticsSummaryEndpoint:
     def test_summary_shape_and_values(self, client):
-        response = client.get("/v1/analytics/summary", headers=HEADERS)
+        response = client.get("/v1/analytics/summary", headers=_auth_headers())
         assert response.status_code == 200
         summary = response.json()["summary"]
         assert summary["total_reports"] == len(NARRATIVES)
@@ -61,14 +78,14 @@ class TestAnalyticsSummaryEndpoint:
         assert "disclaimer" in summary
 
     def test_summary_deterministic_across_calls(self, client):
-        first = client.get("/v1/analytics/summary", headers=HEADERS).json()["summary"]
-        second = client.get("/v1/analytics/summary", headers=HEADERS).json()["summary"]
+        first = client.get("/v1/analytics/summary", headers=_auth_headers()).json()["summary"]
+        second = client.get("/v1/analytics/summary", headers=_auth_headers()).json()["summary"]
         assert first == second
 
 
 class TestExplanationEndpoint:
     def test_critical_incident_explains_its_classification(self, client):
-        response = client.get("/v1/incidents/E-1/explanation", headers=HEADERS)
+        response = client.get("/v1/incidents/E-1/explanation", headers=_auth_headers())
         assert response.status_code == 200
         explanation = response.json()["explanation"]
         assert explanation["routing"] == "critical_escalation"
@@ -79,7 +96,7 @@ class TestExplanationEndpoint:
         assert "triad" in explanation
 
     def test_benign_incident_has_no_recommendations(self, client):
-        response = client.get("/v1/incidents/E-4/explanation", headers=HEADERS)
+        response = client.get("/v1/incidents/E-4/explanation", headers=_auth_headers())
         assert response.status_code == 200
         explanation = response.json()["explanation"]
         assert explanation["routing"] == "auto_dismiss"
@@ -87,5 +104,5 @@ class TestExplanationEndpoint:
         assert explanation["recommendations"] == []
 
     def test_unknown_incident_returns_404(self, client):
-        response = client.get("/v1/incidents/MISSING-1/explanation", headers=HEADERS)
+        response = client.get("/v1/incidents/MISSING-1/explanation", headers=_auth_headers())
         assert response.status_code == 404

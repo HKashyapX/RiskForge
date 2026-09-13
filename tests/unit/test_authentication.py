@@ -295,7 +295,8 @@ class TestAuthFreeRoutes:
         response = client.get("/ready", headers={"X-Correlation-ID": "probe"})
         assert response.status_code == 200
 
-    def test_inference_needs_no_auth_when_auth_not_configured(self) -> None:
+    def test_inference_requires_auth_when_auth_not_configured(self) -> None:
+        """Fail closed: without an auth service, scoring routes are refused."""
         client = TestClient(create_app(FakeApplication(), FakeReadiness()))
         response = client.post(
             "/v1/inference",
@@ -304,7 +305,7 @@ class TestAuthFreeRoutes:
                 "incident": _incident().model_dump(mode="json"),
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 401
 
 
 # ---------------------------------------------------------------------------
