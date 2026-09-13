@@ -31,6 +31,7 @@ Important:
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import json
 import sys
@@ -2014,18 +2015,37 @@ def save_manifest() -> None:
 
     manifest = {
 
-        "manifest_version": 1,
+        "schema_version": 1,
 
         "model_version": (
             MODEL_VERSION
         ),
 
-        "model_name": MODEL_NAME,
+        "model_sha256": (
+            hashlib.sha256(ONNX_FILE.read_bytes()).hexdigest()
+        ),
 
         "backbone": MODEL_NAME,
 
         "max_sequence_length": (
             MAX_LENGTH
+        ),
+
+        "quantization": "none",
+
+        "input_names": [
+            "input_ids",
+            "attention_mask",
+            "token_type_ids",
+        ],
+
+        "output_names": [
+            "sif_logits",
+            "iogp_logits",
+        ],
+
+        "iogp_rule_order": (
+            IOGP_RULES
         ),
 
         "onnx_opset": (
