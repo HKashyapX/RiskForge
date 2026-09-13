@@ -147,9 +147,11 @@ class _ModeEnforcingEngine:
     def __init__(self, inner: InferenceEngine, scoring_mode: ScoringMode) -> None:
         self._inner = inner
         self._scoring_mode = scoring_mode
-        self.engine_name = getattr(
-            inner, "engine_name", "onnx-inference-engine"
-        )
+        # Both concrete engines declare `engine_name` as a class attribute;
+        # no capability discovery — the attribute is part of the engine
+        # protocol.  Fall back only if a test double omits it.
+        name = getattr(inner, "engine_name", None)
+        self.engine_name = name if isinstance(name, str) else "unknown-engine"
         self.mode = (
             "onnx-model" if scoring_mode is ScoringMode.ONNX_MODEL else "heuristic"
         )

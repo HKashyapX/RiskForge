@@ -92,16 +92,18 @@ npm run dev        # http://localhost:5173
 npm run build      # static build in dist/
 ```
 
-Set `VITE_API_BASE_URL` to point the dashboard at a running API; without it the dashboard uses bundled demo data.
+Set `VITE_API_BASE_URL` to point the dashboard at a running API; without it the dashboard uses bundled demo data. For authenticated deployments the host application obtains a short-lived token from your identity provider and registers it via `setAuthToken()` (`Website/frontend/src/api/adapters/live/apiClient.ts`) — no credentials are ever placed in `VITE_*` variables, because Vite inlines them into the shipped bundle.
 
 ### Docker
 
 ```bash
-cp .env.example .env   # edit credentials
-docker compose up --build          # api + postgres
+cp .env.example .env   # provision PGUSER/PGPASSWORD/GF_SECURITY_ADMIN_PASSWORD etc.
+docker compose up --build          # api + postgres (pilot/production)
 docker compose --profile setup up migrations
 docker compose --profile monitoring up   # + prometheus + grafana
 ```
+
+Demo needs no PostgreSQL: run the API with `RISKFORGE_DEPLOYMENT_MODE=demo` and the frontend in its default demo mode instead of the compose stack. Compose images are pinned to version tags; production releases must additionally record and substitute image digests (see `docs/decisions/0006-deployment-modes.md`).
 
 ## Tests
 
@@ -121,8 +123,9 @@ CI (`.github/workflows/ci.yml`) runs lint, boundary checks, unit + integration t
 
 - **Deployment modes are fail-closed** (`src/riskforge/runtime/deployment.py`): demo is public but exposes no operational routes; pilot/production require authentication; production additionally requires PostgreSQL and a validated model artifact — missing pieces refuse startup rather than degrading silently.
 - **Authentication** (HS256 JWT, `src/riskforge/authentication/jwt_service.py`): strict algorithm allow-list, validated `kid` against a local keyring, required finite `exp`, issuer/audience checks, `nbf` handling, bounded token size, roles/scope claims mapped onto the principal. Credentials are never logged.
-- **Authorization**: deny-by-default. Review decisions need an explicit reviewer role and the deployment's `RISKFORGE_REVIEWER_SUBJECTS` allow-list; unset means every review is denied.
-- **Ingestion resource limits** (`src/riskforge/ingestion/limits.py`): document size, record counts, line sizes, JSON depth, PDF pages, and spreadsheet-expansion ratios are bounded before parsing; operators may tighten limits via `RISKFORGE_INGEST_LIMIT_*` but never disable them.
+- **Authorization**: capability scopes (`incidents:read`, `analytics:read`, `scoring:write`, `audit:read`) enforced at every route boundary, with documented fallback roles; review decisions additionally need an explicit reviewer role/`reviews:write` scope and the deny-by-default `RISKFORGE_REVIEWER_SUBJECTS` allow-list.
+- **Ingestion resource limits** (`src/riskforge/ingestion/limits.py`): declared-format signature verification, XLSX ZIP metadata inspection before extraction, document size, record counts, line sizes, JSON depth, PDF pages, and spreadsheet-expansion ratios are bounded before parsing; operators may tighten limits via `RISKFORGE_INGEST_LIMIT_*` but never disable them. Duplicate `log_id`s are reported explicitly as per-record outcomes.
+- **Audit trail**: upload, scoring, idempotent replay, review, and failure actions append `inference_recorded`/`review_decision_recorded` events carrying actor, timestamp, correlation id, scoring mode, and model version — never narrative text.
 - Request size caps, timeouts, CORS allowlist, correlation IDs, security headers, and structured errors.
 - Docker defaults carry **no credentials**: `PGUSER`/`PGPASSWORD`/`GF_SECURITY_ADMIN_PASSWORD` must be provisioned in `.env`, PostgreSQL is not published to the host, and monitoring ports bind to loopback only.
 - Never commit `.env` or key material.

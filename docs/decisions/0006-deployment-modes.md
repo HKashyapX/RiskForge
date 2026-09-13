@@ -30,6 +30,7 @@ unmet.
 | Scoring | heuristic, labelled `synthetic-heuristic` | model or heuristic, always labelled | validated ONNX artifact + manifest + encoder, never heuristic |
 | Metrics endpoint | disabled | private (auth) | private (auth) |
 | Review authorization | deny-by-default | deny-by-default (`RISKFORGE_REVIEWER_SUBJECTS`) | deny-by-default |
+| Demo operational routes | 404 (not registered) | — | — |
 
 Key properties:
 
@@ -57,3 +58,14 @@ Key properties:
   heuristic in readiness, results, and logs.
 - Future model upgrades are auditable: every stored score names the exact
   artifact and calibration that produced it.
+- **Image pinning policy.** Compose images are pinned to version tags
+  (`postgres:16.4-alpine`, `prom/prometheus:v2.53.0`, `grafana:11.1.0`) —
+  never `latest`. Production releases must additionally pin digests: at
+  release time, record `docker image inspect --format '{{index .RepoDigests 0}}'`
+  output for every image in the deployment manifest and substitute the
+  digest reference in the compose file. Until that digest record exists the
+  release is not production-ready (the tags alone protect against silent
+  major upgrades but not against tag mutation).
+- **Demo does not start PostgreSQL.** The demo mode runs entirely from the
+  bundled synthetic dataset with no database service; only pilot and
+  production compose stacks start PostgreSQL.
