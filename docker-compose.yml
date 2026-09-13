@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${RISKFORGE_API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -12,6 +12,8 @@ services:
       - .env
     environment:
       - PGHOST=postgres
+      - RISKFORGE_DEPLOYMENT_MODE=${RISKFORGE_DEPLOYMENT_MODE:?set RISKFORGE_DEPLOYMENT_MODE in .env (pilot or production)}
+      - RISKFORGE_AUTH_ENABLED=${RISKFORGE_AUTH_ENABLED:?authentication is mandatory: set RISKFORGE_AUTH_ENABLED=true}
     restart: unless-stopped
     deploy:
       resources:
@@ -20,17 +22,20 @@ services:
           cpus: "2.0"
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.4-alpine
+    # No default credentials: composition fails if the operator has not
+    # provisioned secrets.  PostgreSQL is reachable only inside the compose
+    # network — no host port is published by default.
     environment:
-      - POSTGRES_USER=${PGUSER:-postgres}
-      - POSTGRES_PASSWORD=${PGPASSWORD:-postgres}
+      - POSTGRES_USER=${PGUSER:?set PGUSER in .env}
+      - POSTGRES_PASSWORD=${PGPASSWORD:?set PGPASSWORD in .env}
       - POSTGRES_DB=${PGDATABASE:-riskforge}
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,23 +58,25 @@ services:
       - setup
 
   prometheus:
-    image: prom/prometheus:latest
+    # Pinned minor tag; digests recommended for production deployments.
+    image: prom/prometheus:v2.53.0
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     restart: unless-stopped
     profiles:
       - monitoring
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.1.0
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      # No default admin password: the operator must provision one.
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?set GF_SECURITY_ADMIN_PASSWORD in .env}
     restart: unless-stopped
     profiles:
       - monitoring

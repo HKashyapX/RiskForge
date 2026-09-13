@@ -40,29 +40,48 @@ Subsystems enforce import boundaries (verified in CI by `scripts/lint_boundaries
 
 ## Run
 
+### Deployment modes (mandatory)
+
+`RISKFORGE_DEPLOYMENT_MODE` is required and must be one of:
+
+| Mode | Auth | Persistence | Scoring | Notes |
+|---|---|---|---|---|
+| `demo` | public | none needed | labelled synthetic-heuristic | operational routes disabled |
+| `pilot` | **required** | SQLite/Postgres | model or explicitly-labelled heuristic | authenticated field trial |
+| `production` | **required** | **PostgreSQL required** | validated ONNX artifact + encoder **required** | fails closed on any missing piece |
+
+Production refuses to start without: authentication configured, PostgreSQL reachable, and a valid model artifact + manifest (matching checksum, schema, ordered IOGP labels) + tokenizer encoder matching the manifest backbone. There is **no** silent heuristic fallback in production. Pilot may run the deterministic heuristic engine, but every result and the readiness endpoint label it `heuristic`.
+
 ### Backend (API)
 
 ```bash
 python -m pip install -r requirements.txt
 export PYTHONPATH=src
 
-# SQLite persistence (default, zero-config)
-RISKFORGE_ENV=development \
-RISKFORGE_MODEL_PATH=data/models/sif.onnx \
-RISKFORGE_MANIFEST_PATH=data/models/manifest.yaml \
-uvicorn riskforge.runtime.main:create_app --factory --host 0.0.0.0 --port 8000
+# Pilot mode (SQLite, heuristic scoring, mandatory auth)
+export RISKFORGE_DEPLOYMENT_MODE=pilot
+export RISKFORGE_AUTH_ENABLED=true
+export RISKFORGE_AUTH_ISSUER=riskforge-test
+export RISKFORGE_AUTH_AUDIENCE=riskforge-api
+export RISKFORGE_AUTH_KEYS_DIR=/run/secrets/riskforge-keys   # <kid>.key files
+export RISKFORGE_SQLITE_PATH=data/riskforge.db
+uvicorn riskforge.runtime.production:create_app --factory --host 0.0.0.0 --port 8000
 ```
 
-Without model artifacts the API starts with the deterministic heuristic engine and reports its mode at `GET /health` and `GET /ready`. Endpoints:
+Tokens are HS256 JWTs; mint them offline with the shared key (`kid` selects the key). Requests need `Authorization: Bearer <token>`; review decisions additionally require a `reviewer` role claim.
+
+> The old `riskforge.runtime.main` entrypoint no longer exists; the ASGI factory is `riskforge.runtime.production:create_app` (matches the Dockerfile CMD).
+
+All scoring, ingest, analytics, incident, audit, and explanation endpoints require authentication; `/health` is public and `/ready` reports the deployment mode and scoring label. Endpoints:
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/health`, `/ready` | liveness / readiness (component detail) |
-| POST | `/v1/inference`, `/v1/inference/batch` | score normalized records |
-| POST | `/v1/ingest` | ingest CSV/JSON/JSONL/XLSX/PDF reports |
-| GET | `/v1/incidents`, `/v1/incidents/{log_id}` | query stored results |
-| GET | `/v1/analytics/summary` | SPD, trends, patterns, recommendations |
-| POST | `/v1/reviews` | HITL review decisions (audited) |
+| GET | `/health`, `/ready` | liveness / readiness (mode + scoring labels) |
+| POST | `/v1/inference`, `/v1/inference/batch` | score normalized records (auth) |
+| POST | `/v1/ingest` | ingest CSV/JSON/JSONL/XLSX/PDF reports (auth, resource-limited) |
+| GET | `/v1/incidents`, `/v1/incidents/{log_id}` | query stored results (auth) |
+| GET | `/v1/analytics/summary` | SPD, trends, de-identified patterns (auth) |
+| POST | `/v1/incidents/{log_id}/reviews` | HITL review decisions, reviewer role required (audited) |
 
 ### Dashboard (frontend)
 
@@ -100,6 +119,12 @@ CI (`.github/workflows/ci.yml`) runs lint, boundary checks, unit + integration t
 
 ## Security
 
-- JWT (HS256) authentication on protected routes when `RISKFORGE_AUTH_ENABLED` is set; secrets via environment only (`src/riskforge/authentication/jwt_service.py`).
-- Request size caps, timeouts, CORS allowlist, correlation IDs, and structured errors (`src/riskforge/api/request_controls.py`).
-- Never commit `.env`; `PGPASSWORD=CHANGE_ME_IN_PRODUCTION` must be replaced before deployment.
+- **Deployment modes are fail-closed** (`src/riskforge/runtime/deployment.py`): demo is public but exposes no operational routes; pilot/production require authentication; production additionally requires PostgreSQL and a validated model artifact — missing pieces refuse startup rather than degrading silently.
+- **Authentication** (HS256 JWT, `src/riskforge/authentication/jwt_service.py`): strict algorithm allow-list, validated `kid` against a local keyring, required finite `exp`, issuer/audience checks, `nbf` handling, bounded token size, roles/scope claims mapped onto the principal. Credentials are never logged.
+- **Authorization**: deny-by-default. Review decisions need an explicit reviewer role and the deployment's `RISKFORGE_REVIEWER_SUBJECTS` allow-list; unset means every review is denied.
+- **Ingestion resource limits** (`src/riskforge/ingestion/limits.py`): document size, record counts, line sizes, JSON depth, PDF pages, and spreadsheet-expansion ratios are bounded before parsing; operators may tighten limits via `RISKFORGE_INGEST_LIMIT_*` but never disable them.
+- Request size caps, timeouts, CORS allowlist, correlation IDs, security headers, and structured errors.
+- Docker defaults carry **no credentials**: `PGUSER`/`PGPASSWORD`/`GF_SECURITY_ADMIN_PASSWORD` must be provisioned in `.env`, PostgreSQL is not published to the host, and monitoring ports bind to loopback only.
+- Never commit `.env` or key material.
+
+See `docs/decisions/0006-deployment-modes.md` for the mode-boundary rationale.
